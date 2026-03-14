@@ -1,0 +1,114 @@
+/* Ana pencere ve genel arka plan */
+QWidget {
+    background-color: #F4F7FB; /* Daha açık, sakin ve ferah bir arka plan */
+    color: #333333; /* Okunaklı siyah/gri metin rengi */
+    font-family: "Segoe UI", sans-serif;
+    font-size: 14px;
+}
+
+/* Buton Stilleri */
+QPushButton {
+    background-color: #5C9E9A; /* Sakin ve hoş bir mavi-yeşil tonu */
+    color: white;
+    border-radius: 6px;
+    padding: 10px;
+    font-weight: bold;
+    border: 1px solid #4C7D7A;
+}
+
+QPushButton:hover {
+    background-color: #4C7D7A; /* Hover durumu için biraz daha koyu ton */
+}
+
+QPushButton:pressed {
+    background-color: #3A5A54; /* Basılı buton için koyu renk */
+}
+
+/* LineEdit (Giriş Alanı) */
+QLineEdit {
+    background-color: #FFFFFF; /* Beyaz arka plan */
+    border: 1px solid #DDDDDD; /* Gri sınırlar */
+    border-radius: 4px;
+    padding: 6px;
+    color: #333333;
+}
+
+QLineEdit:focus {
+    border: 1px solid #5C9E9A; /* Odaklandığında yeşil-mavi tonunda bir sınır */
+}
+
+/* QLabel (Etiketler) */
+QLabel {
+    color: #4A4A4A; /* Daha yumuşak koyu gri */
+    font-size: 14px;
+}
+
+/* QTableWidget (Tablo Stili) */
+QTableWidget {
+    background-color: #FFFFFF; /* Beyaz zemin */
+    gridline-color: #DDDDDD; /* Açık gri çizgiler */
+    border: 1px solid #DDDDDD;
+}
+
+QHeaderView::section {
+    background-color: #5C9E9A; /* Başlıklar için hoş bir yeşil-mavi tonu */
+    color: white;
+    padding: 6px;
+    border: none;
+    font-weight: bold;
+}
+
+QTableWidget QTableCornerButton::section {
+    background-color: #5C9E9A;
+    border: none;
+}
+
+/* QScrollBar (Kaydırma Çubuğu) */
+QScrollBar:vertical {
+    border: none;
+    background: #F4F7FB;
+    width: 14px;
+}
+
+QScrollBar::handle:vertical {
+    background: #5C9E9A; /* Kaydırma çubuğu için yeşil-mavi tonunda */
+    border-radius: 7px;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    background: none;
+}
+
+/* Checkbox Stili */
+QCheckBox {
+    spacing: 6px;
+    color: #333333; /* Koyu gri metin */
+}
+
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #BBBBBB;
+    background: #FFFFFF;
+    border-radius: 4px;
+}
+
+QCheckBox::indicator:checked {
+    background: #5C9E9A; /* Seçili olduğunda yeşil-mavi tonu */
+    border: 1px solid #4C7D7A;
+}
+
+/* Combobox Stili */
+QComboBox {
+    background-color: #FFFFFF;
+    border: 1px solid #DDDDDD;
+    padding: 6px;
+    color: #333333;
+    border-radius: 5px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #FFFFFF;
+    selection-background-color: #5C9E9A; /* Seçili öğe için yeşil-mavi */
+    color: #333333;
+}
