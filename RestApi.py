@@ -6,6 +6,7 @@ from config import (
     get_flask_host,
     get_flask_port,
     get_flask_secret_key,
+    get_jwt_expiration_seconds,
     is_production,
 )
 from flask import Flask, jsonify, request
@@ -17,12 +18,14 @@ from datetime import datetime
 
 from api_error_handlers import register_global_error_handlers
 from backend_logging import configure_backend_logging, get_error_logger
+from jwt_auth import issue_access_token, register_jwt_middleware
 
 app = Flask(__name__)
 app.secret_key = get_flask_secret_key()
 CORS(app)  # Enable CORS for all routes
 configure_backend_logging(app)
 register_global_error_handlers(app)
+register_jwt_middleware(app)
 
 # --- SQLite Veritabanı Ayarları (Ücretsiz ve Global) ---
 # Veritabanı yolu: config.py + ortam degiskeni (DATABASE_PATH / SQLITE_PATH)
@@ -1174,14 +1177,20 @@ def login():
             if not role:
                 role = 'normal'
             
-            # Giriş başarılı - kullanıcı bilgilerini döndür
+            # Giriş başarılı - kullanıcı bilgilerini ve JWT döndür
+            access_token = issue_access_token(user_id, username, role)
+            exp_sec = get_jwt_expiration_seconds()
             return jsonify({
                 'message': 'Giriş Başarılı',
                 'user_id': user_id,
                 'username': username,
                 'role': role,
                 'bolge_kodlari': bolge_kodlari,
-                'default_bolge_kodu': default_bolge_kodu
+                'default_bolge_kodu': default_bolge_kodu,
+                'token': access_token,
+                'access_token': access_token,
+                'token_type': 'Bearer',
+                'expires_in': exp_sec,
             }), 200
         else:
             return jsonify({'error': 'Yanlış kullanıcı adı veya şifre'}), 401

@@ -28,6 +28,11 @@ Ortam degiskenleri (ornek):
   LOG_SLOW_MS — Bu sureyi asan istekler WARNING ile loglanir; 0=kapat (varsayilan: 2000)
   LOG_REQUEST_BODY — 1/true: JSON/text govde onizlemesi (login/register haric); varsayilan kapali
   LOG_HUMAN_READABLE — 0/false: Turkce ozet satirini kapat (yalnizca TEKNIK blogu); varsayilan acik
+
+  JWT (Flask SECRET_KEY ile karistirilmaz):
+  JWT_SECRET_KEY — Zorunlu ayri imza anahtari (uretimde mutlaka .env)
+  JWT_EXPIRATION_HOURS — Access token suresi (varsayilan 24)
+  JWT_AUTH_ENABLED — 0: API JWT zorunlulugunu kapat (script/legacy); varsayilan 1
 """
 import logging
 import os
@@ -38,6 +43,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(_PROJECT_ROOT, ".env"))
 
 _dev_flask_secret = None
+_dev_jwt_secret = None
 
 
 def _env_str(name, default=None):
@@ -187,6 +193,43 @@ def get_log_request_body_preview():
 def get_log_human_readable():
     """Kullaniciya yonelik Turkce ozet + yazilimci icin TEKNIK blogu."""
     v = _env_str("LOG_HUMAN_READABLE")
+    if v is not None:
+        return v.lower() not in ("0", "false", "no", "off")
+    return True
+
+
+def get_jwt_secret():
+    """
+    JWT imzasi icin Flask secret'tan BAGIMSIZ anahtar.
+    Uretimde JWT_SECRET_KEY zorunludur; gelistirmede yoksa yalnizca JWT icin uretilen gecici anahtar kullanilir.
+    """
+    global _dev_jwt_secret
+    s = _env_str("JWT_SECRET_KEY")
+    if s:
+        return s
+    if is_production():
+        raise RuntimeError(
+            "Uretim ortaminda JWT_SECRET_KEY tanimlanmalidir (.env). "
+            "Flask SECRET_KEY ile ayni olmamali; ayri guclu bir deger kullanin."
+        )
+    if _dev_jwt_secret is None:
+        import secrets
+
+        _dev_jwt_secret = secrets.token_hex(32)
+        print(
+            "UYARI: JWT_SECRET_KEY tanimli degil; gelistirme icin yalnizca JWT'ye ozel "
+            "gecici anahtar kullaniliyor. Uretimde .env icine ayri JWT_SECRET_KEY ekleyin."
+        )
+    return _dev_jwt_secret
+
+
+def get_jwt_expiration_seconds():
+    hours = _env_int("JWT_EXPIRATION_HOURS", 24)
+    return max(300, hours * 3600)
+
+
+def get_jwt_auth_enabled():
+    v = _env_str("JWT_AUTH_ENABLED")
     if v is not None:
         return v.lower() not in ("0", "false", "no", "off")
     return True

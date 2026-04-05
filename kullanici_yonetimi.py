@@ -3,14 +3,21 @@
 """
 Kullanıcı Yönetim Scripti
 Bu script ile kullanıcı ekleyebilir, rol atayabilir ve bölge kodları tanımlayabilirsiniz.
+
+API JWT acikken: once admin ile giris yapip token alin, ortam degiskeni API_TOKEN olarak verin
+veya .env icinde JWT_AUTH_ENABLED=0 ile (yalnizca guvenilir ortamda) JWT zorunlulugunu kapatin.
 """
 
 import sys
 import os
 import requests
-from werkzeug.security import generate_password_hash
 
+from api_auth_context import merge_auth_headers, set_bearer_token
 from config import get_api_root
+
+_api_token = os.environ.get("API_TOKEN", "").strip()
+if _api_token:
+    set_bearer_token(_api_token)
 
 def print_menu():
     """Ana menüyü göster"""
@@ -36,10 +43,11 @@ def add_user():
         return
     
     try:
-        response = requests.post(f"{get_api_root()}/register", json={
-            'username': username,
-            'password': password
-        })
+        response = requests.post(
+            f"{get_api_root()}/register",
+            json={"username": username, "password": password},
+            headers=merge_auth_headers(),
+        )
         
         if response.status_code == 201:
             print(f"✅ Kullanıcı '{username}' başarıyla eklendi!")
@@ -86,9 +94,11 @@ def update_user_role_with_username(username):
         return
     
     try:
-        response = requests.put(f"{get_api_root()}/users/{username}/role", json={
-            'role': role
-        })
+        response = requests.put(
+            f"{get_api_root()}/users/{username}/role",
+            json={"role": role},
+            headers=merge_auth_headers(),
+        )
         
         if response.status_code == 200:
             print(f"✅ Kullanıcı '{username}' rolü '{role}' olarak güncellendi!")
@@ -131,7 +141,9 @@ def add_user_bolge_with_username(username):
     show_all = input("\nTüm bölge kodlarını görmek ister misiniz? (e/h): ").strip().lower()
     if show_all == 'e':
         try:
-            response = requests.get(f"{get_api_root()}/bolge_kodlari")
+            response = requests.get(
+                f"{get_api_root()}/bolge_kodlari", headers=merge_auth_headers()
+            )
             if response.status_code == 200:
                 bolge_kodlari = response.json()
                 print("\nTüm Bölge Kodları:")
@@ -151,9 +163,11 @@ def add_user_bolge_with_username(username):
         return
     
     try:
-        response = requests.post(f"{get_api_root()}/users/{username}/bolge", json={
-            'bolge_kodu': bolge_kodu
-        })
+        response = requests.post(
+            f"{get_api_root()}/users/{username}/bolge",
+            json={"bolge_kodu": bolge_kodu},
+            headers=merge_auth_headers(),
+        )
         
         if response.status_code == 200:
             data = response.json()
@@ -181,7 +195,9 @@ def view_user_info():
     username = input("Kullanıcı Adı: ").strip()
     
     try:
-        response = requests.get(f"{get_api_root()}/users/{username}")
+        response = requests.get(
+            f"{get_api_root()}/users/{username}", headers=merge_auth_headers()
+        )
         
         if response.status_code == 200:
             user_data = response.json()
@@ -207,7 +223,9 @@ def list_all_users():
     print("\n--- Tüm Kullanıcılar ---")
     
     try:
-        response = requests.get(f"{get_api_root()}/users")
+        response = requests.get(
+            f"{get_api_root()}/users", headers=merge_auth_headers()
+        )
         
         if response.status_code == 200:
             users = response.json().get('users', [])

@@ -14,6 +14,7 @@ from matplotlib.figure import Figure
 import numpy as np
 import xlsxwriter
 import os
+from api_auth_context import merge_auth_headers
 from config import get_api_root
 
 
@@ -186,7 +187,9 @@ class UstDuzeyYoneticiTab(QWidget):
         
         # Tüm bölgeleri yükle
         try:
-            response = requests.get(f"{get_api_root()}/bolge_kodlari")
+            response = requests.get(
+                f"{get_api_root()}/bolge_kodlari", headers=merge_auth_headers()
+            )
             if response.status_code == 200:
                 bolge_kodlari_dict = response.json()
                 for kod, ad in bolge_kodlari_dict.items():
@@ -880,7 +883,9 @@ class UstDuzeyYoneticiTab(QWidget):
         """)
         self.bolge_dashboard_bolge_combo.addItem("Tümü", None)
         try:
-            response = requests.get(f"{get_api_root()}/bolge_kodlari")
+            response = requests.get(
+                f"{get_api_root()}/bolge_kodlari", headers=merge_auth_headers()
+            )
             if response.status_code == 200:
                 bolge_kodlari_dict = response.json()
                 for kod, ad in bolge_kodlari_dict.items():
@@ -1754,7 +1759,9 @@ class UstDuzeyYoneticiTab(QWidget):
         """)
         self.veri_bolge_combo.addItem("Tümü", None)
         try:
-            response = requests.get(f"{get_api_root()}/bolge_kodlari")
+            response = requests.get(
+                f"{get_api_root()}/bolge_kodlari", headers=merge_auth_headers()
+            )
             if response.status_code == 200:
                 bolge_kodlari_dict = response.json()
                 for kod, ad in bolge_kodlari_dict.items():
@@ -2031,7 +2038,9 @@ class UstDuzeyYoneticiTab(QWidget):
             
             # Harcama verilerini yükle
             url_harcama = f"{get_api_root()}/harcama_talep"
-            response_harcama = requests.get(url_harcama, params=params)
+            response_harcama = requests.get(
+                url_harcama, params=params, headers=merge_auth_headers()
+            )
             
             df_harcama = pd.DataFrame()
             if response_harcama.status_code == 200:
@@ -2059,7 +2068,9 @@ class UstDuzeyYoneticiTab(QWidget):
             
             # Masraf verilerini yükle
             url_masraf = f"{get_api_root()}/get_expenses"
-            response_masraf = requests.get(url_masraf, params=params)
+            response_masraf = requests.get(
+                url_masraf, params=params, headers=merge_auth_headers()
+            )
             
             df_masraf = pd.DataFrame()
             if response_masraf.status_code == 200:
@@ -2158,7 +2169,9 @@ class UstDuzeyYoneticiTab(QWidget):
             
             # Harcama verilerini yükle
             url_harcama = f"{get_api_root()}/harcama_talep"
-            response_harcama = requests.get(url_harcama, params=params)
+            response_harcama = requests.get(
+                url_harcama, params=params, headers=merge_auth_headers()
+            )
             
             df_harcama = pd.DataFrame()
             if response_harcama.status_code == 200:
@@ -2291,7 +2304,9 @@ class UstDuzeyYoneticiTab(QWidget):
             
             # Harcama verilerini yükle
             url_harcama = f"{get_api_root()}/harcama_talep"
-            response_harcama = requests.get(url_harcama, params=params)
+            response_harcama = requests.get(
+                url_harcama, params=params, headers=merge_auth_headers()
+            )
             
             df_harcama = pd.DataFrame()
             if response_harcama.status_code == 200:

@@ -559,6 +559,7 @@ def main():
 
     # Ana döngü - çıkış yapınca login ekranına döner
     while True:
+        api_client.clear_token()
         # Login ekranını göster
         login_window = LoginRegister(api_client)
         # Login penceresine de ikonu ayarla

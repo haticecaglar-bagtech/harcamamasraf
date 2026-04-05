@@ -1,6 +1,7 @@
 import requests
 import json
 
+from api_auth_context import clear_bearer_token, merge_auth_headers, set_bearer_token
 from config import get_api_root
 
 
@@ -9,6 +10,16 @@ class ApiClient:
 
     def __init__(self, base_url=None):
         self.base_url = base_url if base_url is not None else get_api_root()
+        self._token = None
+
+    def set_token(self, token):
+        """JWT access token (login sonrasi)."""
+        self._token = token
+        set_bearer_token(token)
+
+    def clear_token(self):
+        self._token = None
+        clear_bearer_token()
 
     def _make_request(self, endpoint, method="GET", data=None):
         """Make a request to the API"""
@@ -17,15 +28,19 @@ class ApiClient:
 
         try:
             if method == "GET":
-                response = requests.get(url)
+                response = requests.get(url, headers=merge_auth_headers())
             elif method == "POST":
-                headers = {'Content-Type': 'application/json'}
-                response = requests.post(url, data=json.dumps(data), headers=headers)
+                headers = merge_auth_headers({"Content-Type": "application/json"})
+                response = requests.post(
+                    url, data=json.dumps(data), headers=headers
+                )
             elif method == "PUT":
-                headers = {'Content-Type': 'application/json'}
-                response = requests.put(url, data=json.dumps(data), headers=headers)
+                headers = merge_auth_headers({"Content-Type": "application/json"})
+                response = requests.put(
+                    url, data=json.dumps(data), headers=headers
+                )
             elif method == "DELETE":
-                response = requests.delete(url)
+                response = requests.delete(url, headers=merge_auth_headers())
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
 

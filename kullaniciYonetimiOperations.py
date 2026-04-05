@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 import requests
+from api_auth_context import merge_auth_headers
 from config import get_api_root
 
 
@@ -86,7 +87,9 @@ class KullaniciYonetimiTab(QWidget):
     def load_users(self):
         """Tüm kullanıcıları yükle"""
         try:
-            response = requests.get(f"{get_api_root()}/users")
+            response = requests.get(
+                f"{get_api_root()}/users", headers=merge_auth_headers()
+            )
             
             if response.status_code == 200:
                 data = response.json()
@@ -197,7 +200,9 @@ class KullaniciYonetimiTab(QWidget):
         
         # Tüm bölgeleri yükle
         try:
-            response = requests.get(f"{get_api_root()}/bolge_kodlari")
+            response = requests.get(
+                f"{get_api_root()}/bolge_kodlari", headers=merge_auth_headers()
+            )
             if response.status_code == 200:
                 bolge_kodlari = response.json()
                 for kod, ad in bolge_kodlari.items():
@@ -229,19 +234,24 @@ class KullaniciYonetimiTab(QWidget):
             
             # Kullanıcıyı ekle
             try:
-                response = requests.post(f"{get_api_root()}/register", json={
-                    'username': username,
-                    'password': password,
-                    'admin_username': self.admin_username,
-                    'admin_password': admin_password
-                })
+                response = requests.post(
+                    f"{get_api_root()}/register",
+                    json={
+                        'username': username,
+                        'password': password,
+                        'admin_username': self.admin_username,
+                        'admin_password': admin_password,
+                    },
+                    headers=merge_auth_headers(),
+                )
                 
                 if response.status_code == 201:
                     # Rol atama
                     if role != 'normal':
                         role_response = requests.put(
                             f"{get_api_root()}/users/{username}/role",
-                            json={'role': role}
+                            json={'role': role},
+                            headers=merge_auth_headers(),
                         )
                     
                     # Bölge atama
@@ -255,7 +265,8 @@ class KullaniciYonetimiTab(QWidget):
                             # Her bölgeyi ekle
                             bolge_response = requests.post(
                                 f"{get_api_root()}/users/{username}/bolge",
-                                json={'bolge_kodu': bolge_kodu}
+                                json={'bolge_kodu': bolge_kodu},
+                                headers=merge_auth_headers(),
                             )
                     
                     QMessageBox.information(self, "Başarılı", 
@@ -280,7 +291,10 @@ class KullaniciYonetimiTab(QWidget):
         
         # Kullanıcı bilgilerini al
         try:
-            response = requests.get(f"{get_api_root()}/users/{username}")
+            response = requests.get(
+                f"{get_api_root()}/users/{username}",
+                headers=merge_auth_headers(),
+            )
             if response.status_code != 200:
                 QMessageBox.warning(self, "Uyarı", "Kullanıcı bilgileri alınamadı.")
                 return
@@ -323,7 +337,9 @@ class KullaniciYonetimiTab(QWidget):
         
         # Tüm bölgeleri yükle
         try:
-            response = requests.get(f"{get_api_root()}/bolge_kodlari")
+            response = requests.get(
+                f"{get_api_root()}/bolge_kodlari", headers=merge_auth_headers()
+            )
             if response.status_code == 200:
                 bolge_kodlari = response.json()
                 for kod, ad in bolge_kodlari.items():
@@ -355,7 +371,8 @@ class KullaniciYonetimiTab(QWidget):
                 try:
                     role_response = requests.put(
                         f"{get_api_root()}/users/{username}/role",
-                        json={'role': new_role}
+                        json={'role': new_role},
+                        headers=merge_auth_headers(),
                     )
                     if role_response.status_code == 200:
                         QMessageBox.information(self, "Başarılı", f"Rol '{new_role}' olarak güncellendi.")
@@ -386,7 +403,8 @@ class KullaniciYonetimiTab(QWidget):
                 try:
                     requests.post(
                         f"{get_api_root()}/users/{username}/bolge",
-                        json={'bolge_kodu': bolge_kodu}
+                        json={'bolge_kodu': bolge_kodu},
+                        headers=merge_auth_headers(),
                     )
                 except Exception as e:
                     print(f"Bölge eklenirken hata: {e}")

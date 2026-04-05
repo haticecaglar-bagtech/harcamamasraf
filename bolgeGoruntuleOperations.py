@@ -11,6 +11,7 @@ import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils.dataframe import dataframe_to_rows
+from api_auth_context import merge_auth_headers
 from config import get_api_root
 
 
@@ -305,7 +306,9 @@ class BolgeGoruntuleTab(QWidget):
             url = f"{get_api_root()}/harcama_talep"
             print(f"DEBUG - Harcama talep API çağrısı: {url}")
             print(f"DEBUG - Params: {params}")
-            response = requests.get(url, params=params)
+            response = requests.get(
+                url, params=params, headers=merge_auth_headers()
+            )
             
             print(f"DEBUG - Response status: {response.status_code}")
             if response.status_code == 200:
@@ -402,7 +405,9 @@ class BolgeGoruntuleTab(QWidget):
             
             # URL oluştur
             url = f"{get_api_root()}/get_expenses"
-            response = requests.get(url, params=params)
+            response = requests.get(
+                url, params=params, headers=merge_auth_headers()
+            )
             
             if response.status_code == 200:
                 data = response.json()
@@ -507,7 +512,12 @@ class BolgeGoruntuleTab(QWidget):
             }
             
             print(f"DEBUG - Test kayıt ekleniyor: {test_data}")
-            response = requests.post(f'{get_api_root()}/harcama_talep', json=test_data, timeout=5)
+            response = requests.post(
+                f'{get_api_root()}/harcama_talep',
+                json=test_data,
+                timeout=5,
+                headers=merge_auth_headers(),
+            )
             
             print(f"DEBUG - Test kayıt yanıtı: {response.status_code} - {response.text}")
             
@@ -616,7 +626,9 @@ class BolgeGoruntuleTab(QWidget):
                 }
                 
                 url = f"{get_api_root()}/harcama_talep/{harcama_talep_id}"
-                response = requests.put(url, json=update_data, timeout=10)
+                response = requests.put(
+                    url, json=update_data, timeout=10, headers=merge_auth_headers()
+                )
                 
                 if response.status_code == 200:
                     QMessageBox.information(self, "Başarılı", "Harcama talep başarıyla güncellendi!")
@@ -646,7 +658,9 @@ class BolgeGoruntuleTab(QWidget):
                 
                 # API'ye silme isteği gönder
                 url = f"{get_api_root()}/harcama_talep/{harcama_talep_id}"
-                response = requests.delete(url, timeout=10)
+                response = requests.delete(
+                    url, timeout=10, headers=merge_auth_headers()
+                )
                 
                 if response.status_code == 200:
                     QMessageBox.information(self, "Başarılı", "Harcama talep başarıyla silindi!")
@@ -672,7 +686,9 @@ class BolgeGoruntuleTab(QWidget):
         if reply == QMessageBox.Yes:
             try:
                 url = f"{get_api_root()}/clear_harcama_talep"
-                response = requests.delete(url, timeout=10)
+                response = requests.delete(
+                    url, timeout=10, headers=merge_auth_headers()
+                )
                 
                 if response.status_code == 200:
                     QMessageBox.information(self, "Başarılı", "Tüm harcama talep kayıtları başarıyla silindi!")
@@ -698,7 +714,9 @@ class BolgeGoruntuleTab(QWidget):
         if reply == QMessageBox.Yes:
             try:
                 url = f"{get_api_root()}/clear_all_expenses"
-                response = requests.delete(url, timeout=10)
+                response = requests.delete(
+                    url, timeout=10, headers=merge_auth_headers()
+                )
                 
                 if response.status_code == 200:
                     QMessageBox.information(self, "Başarılı", "Tüm masraf kayıtları başarıyla silindi!")
@@ -852,7 +870,9 @@ class BolgeGoruntuleTab(QWidget):
                 }
                 
                 url = f"{get_api_root()}/update_expense/{expense_id}"
-                response = requests.put(url, json=update_data, timeout=10)
+                response = requests.put(
+                    url, json=update_data, timeout=10, headers=merge_auth_headers()
+                )
                 
                 if response.status_code == 200:
                     QMessageBox.information(self, "Başarılı", "Masraf başarıyla güncellendi!")
@@ -882,7 +902,9 @@ class BolgeGoruntuleTab(QWidget):
                 
                 # API'ye silme isteği gönder
                 url = f"{get_api_root()}/delete_expense/{expense_id}"
-                response = requests.delete(url, timeout=10)
+                response = requests.delete(
+                    url, timeout=10, headers=merge_auth_headers()
+                )
                 
                 if response.status_code == 200:
                     QMessageBox.information(self, "Başarılı", "Masraf başarıyla silindi!")

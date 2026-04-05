@@ -442,6 +442,11 @@ class LoginRegister(QDialog):
                     'bolge_kodlari': response_data.get('bolge_kodlari', []),
                     'default_bolge_kodu': response_data.get('default_bolge_kodu')
                 }
+                token = response_data.get("token") or response_data.get(
+                    "access_token"
+                )
+                if token:
+                    self.api_client.set_token(token)
                 self.show_message("Başarılı", response_data['message'], "success")
                 self.accept()  # Dialog'u kapat
             elif 'error' in response_data:
