@@ -15,12 +15,14 @@ from werkzeug.security import check_password_hash
 import sqlite3
 from datetime import datetime
 
+from api_error_handlers import register_global_error_handlers
 from backend_logging import configure_backend_logging, get_error_logger
 
 app = Flask(__name__)
 app.secret_key = get_flask_secret_key()
 CORS(app)  # Enable CORS for all routes
 configure_backend_logging(app)
+register_global_error_handlers(app)
 
 # --- SQLite Veritabanı Ayarları (Ücretsiz ve Global) ---
 # Veritabanı yolu: config.py + ortam degiskeni (DATABASE_PATH / SQLITE_PATH)

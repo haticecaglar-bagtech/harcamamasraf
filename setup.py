@@ -62,6 +62,7 @@ def pyinstall():
         "--hidden-import=RestApi",
         "--hidden-import=config",
         "--hidden-import=backend_logging",
+        "--hidden-import=api_error_handlers",
         "--hidden-import=harcamaOperations",
         "--hidden-import=masrafOperations",
         "--hidden-import=kodOperations",
