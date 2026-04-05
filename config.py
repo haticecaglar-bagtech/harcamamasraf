@@ -19,7 +19,17 @@ Ortam degiskenleri (ornek):
   FLASK_ENV=production — uretim modu; eksik secret key uygulamayi baslatmaz
   ADMIN_USERNAME — Ilk admin kullanici adi (varsayilan: admin)
   ADMIN_INITIAL_PASSWORD — Veritabaninda admin yokken tek seferlik olusturma sifresi
+
+  Loglama (backend):
+  LOG_DIR — Log klasoru (varsayilan: proje/logs)
+  LOG_LEVEL — DEBUG, INFO, WARNING, ERROR (varsayilan: INFO)
+  LOG_CONSOLE — 1/true: konsola da yaz; 0/false: kapat. Belirtilmezse uretimde kapali, gelistirmede acik.
+  LOG_REQUEST_DETAIL — minimal | standard | full (varsayilan: full)
+  LOG_SLOW_MS — Bu sureyi asan istekler WARNING ile loglanir; 0=kapat (varsayilan: 2000)
+  LOG_REQUEST_BODY — 1/true: JSON/text govde onizlemesi (login/register haric); varsayilan kapali
+  LOG_HUMAN_READABLE — 0/false: Turkce ozet satirini kapat (yalnizca TEKNIK blogu); varsayilan acik
 """
+import logging
 import os
 
 from dotenv import load_dotenv
@@ -130,3 +140,53 @@ def get_admin_username():
 def get_admin_initial_password():
     """Ilk admin olusturma sifresi; yoksa RestApi __main__ rastgele uretir (yalnizca gelistirme)."""
     return _env_str("ADMIN_INITIAL_PASSWORD")
+
+
+def get_log_dir():
+    custom = _env_str("LOG_DIR")
+    if custom:
+        return os.path.abspath(custom)
+    return os.path.join(_PROJECT_ROOT, "logs")
+
+
+def get_log_level():
+    name = (_env_str("LOG_LEVEL", "INFO") or "INFO").upper()
+    return getattr(logging, name, logging.INFO)
+
+
+def get_log_to_console():
+    v = _env_str("LOG_CONSOLE")
+    if v is not None:
+        return v.lower() in ("1", "true", "yes", "on")
+    return not is_production()
+
+
+def get_log_request_detail():
+    """minimal | standard | full — istek satirina eklenecek alanlar."""
+    v = (_env_str("LOG_REQUEST_DETAIL", "full") or "full").lower().strip()
+    if v in ("0", "minimal", "min", "basic"):
+        return "minimal"
+    if v in ("1", "standard", "std", "normal"):
+        return "standard"
+    return "full"
+
+
+def get_log_slow_request_ms():
+    """0: yavas istek uyarisini kapat."""
+    return _env_int("LOG_SLOW_MS", 2000)
+
+
+def get_log_request_body_preview():
+    """Login/register yollarinda asla; digerlerinde kisa govde onizlemesi."""
+    v = _env_str("LOG_REQUEST_BODY")
+    if v is not None:
+        return v.lower() in ("1", "true", "yes", "on")
+    return False
+
+
+def get_log_human_readable():
+    """Kullaniciya yonelik Turkce ozet + yazilimci icin TEKNIK blogu."""
+    v = _env_str("LOG_HUMAN_READABLE")
+    if v is not None:
+        return v.lower() not in ("0", "false", "no", "off")
+    return True

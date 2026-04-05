@@ -15,9 +15,12 @@ from werkzeug.security import check_password_hash
 import sqlite3
 from datetime import datetime
 
+from backend_logging import configure_backend_logging, get_error_logger
+
 app = Flask(__name__)
 app.secret_key = get_flask_secret_key()
 CORS(app)  # Enable CORS for all routes
+configure_backend_logging(app)
 
 # --- SQLite Veritabanı Ayarları (Ücretsiz ve Global) ---
 # Veritabanı yolu: config.py + ortam degiskeni (DATABASE_PATH / SQLITE_PATH)
@@ -30,7 +33,7 @@ def get_db_connection():
         conn.row_factory = sqlite3.Row  # Sözlük benzeri erişim için
         return conn
     except Exception as e:
-        print(f"Veritabanı bağlantı hatası: {e}")
+        get_error_logger().error("Veritabani baglanti hatasi: %s", e, exc_info=True)
         return None
 
 def migrate_db():

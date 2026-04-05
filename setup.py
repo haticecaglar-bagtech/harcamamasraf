@@ -61,6 +61,7 @@ def pyinstall():
         # Python modülleri - tüm dosyalar otomatik bulunur ama emin olmak için
         "--hidden-import=RestApi",
         "--hidden-import=config",
+        "--hidden-import=backend_logging",
         "--hidden-import=harcamaOperations",
         "--hidden-import=masrafOperations",
         "--hidden-import=kodOperations",
