@@ -11,6 +11,7 @@ PyQt5==5.15.10
 pyodbc==5.1.0
 rapidfuzz==3.9.6
 requests==2.32.3
+SQLAlchemy==2.0.23
 scikit-fuzzy==0.4.2
 Werkzeug==2.3.7
 xlrd==2.0.1
