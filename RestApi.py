@@ -1,5 +1,13 @@
 import os
-from config import get_database_path, get_flask_host, get_flask_port
+from config import (
+    get_admin_initial_password,
+    get_admin_username,
+    get_database_path,
+    get_flask_host,
+    get_flask_port,
+    get_flask_secret_key,
+    is_production,
+)
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash
@@ -8,6 +16,7 @@ import sqlite3
 from datetime import datetime
 
 app = Flask(__name__)
+app.secret_key = get_flask_secret_key()
 CORS(app)  # Enable CORS for all routes
 
 # --- SQLite Veritabanı Ayarları (Ücretsiz ve Global) ---
@@ -2812,18 +2821,38 @@ if __name__ == '__main__':
         try:
             cursor = conn.cursor()
             # Admin kullanıcısı var mı kontrol et
-            cursor.execute("SELECT id FROM users WHERE username = 'admin'")
+            admin_username = get_admin_username()
+            cursor.execute("SELECT id FROM users WHERE username = ?", (admin_username,))
             admin_exists = cursor.fetchone()
-            
+
             if not admin_exists:
-                # Admin kullanıcısı oluştur
-                password_hash_admin = generate_password_hash('admin123')
-                cursor.execute("""
-                    INSERT INTO users (username, password_hash, role) 
-                    VALUES ('admin', ?, 'admin')
-                """, (password_hash_admin,))
-                conn.commit()
-                print("✅ Admin kullanıcısı oluşturuldu (kullanıcı adı: admin, şifre: admin123)")
+                pwd = get_admin_initial_password()
+                generated = False
+                if not pwd:
+                    if is_production():
+                        print(
+                            "UYARI: ADMIN_INITIAL_PASSWORD tanimlanmadi; ilk admin kullanicisi olusturulmadi."
+                        )
+                    else:
+                        import secrets
+
+                        pwd = secrets.token_urlsafe(12)
+                        generated = True
+                        print(
+                            f"GELISTIRME: Ilk admin '{admin_username}' sifresi (kaydedin): {pwd}"
+                        )
+                if pwd:
+                    password_hash_admin = generate_password_hash(pwd)
+                    cursor.execute(
+                        """
+                        INSERT INTO users (username, password_hash, role)
+                        VALUES (?, ?, 'admin')
+                        """,
+                        (admin_username, password_hash_admin),
+                    )
+                    conn.commit()
+                    if not generated:
+                        print(f"✅ Admin kullanıcısı oluşturuldu: {admin_username}")
             else:
                 print("✅ Admin kullanıcısı zaten mevcut")
         except Exception as e:

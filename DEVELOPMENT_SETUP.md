@@ -50,3 +50,9 @@ copy .env.example .env
 ```
 
 `config.py` yuklendiginde `.env` otomatik okunur. Gercek sifre veya ozel yollar burada tutulmamali ise yalnizca yerel makinede `.env` olusturun; dosya `.gitignore` ile repoya eklenmez.
+
+Onerilen degiskenler (hassas):
+
+- `FLASK_SECRET_KEY` veya `SECRET_KEY` — Flask icin; uretimde `FLASK_ENV=production` iken zorunludur.
+- `ADMIN_INITIAL_PASSWORD` — Bos veritabaninda ilk admin sifresi; uretimde tanimlanmazsa admin otomatik olusturulmaz.
+- `DATABASE_PATH` — SQLite dosya yolu (paylasilan sunucuda hassas olabilir).

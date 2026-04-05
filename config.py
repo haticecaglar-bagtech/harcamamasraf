@@ -13,6 +13,12 @@ Ortam degiskenleri (ornek):
 
   Proje kokundeki .env dosyasi (git'e eklenmez) yuklenir.
   Sistemde tanimli ortam degiskenleri varsa onlar onceliklidir (load_dotenv override=False).
+
+  Hassas / guvenlik:
+  FLASK_SECRET_KEY veya SECRET_KEY — Flask oturum ve imzalar (uretimde zorunlu)
+  FLASK_ENV=production — uretim modu; eksik secret key uygulamayi baslatmaz
+  ADMIN_USERNAME — Ilk admin kullanici adi (varsayilan: admin)
+  ADMIN_INITIAL_PASSWORD — Veritabaninda admin yokken tek seferlik olusturma sifresi
 """
 import os
 
@@ -20,6 +26,8 @@ from dotenv import load_dotenv
 
 _PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(_PROJECT_ROOT, ".env"))
+
+_dev_flask_secret = None
 
 
 def _env_str(name, default=None):
@@ -84,3 +92,41 @@ def get_flask_port():
 
 def get_health_check_url():
     return f"{get_api_origin()}/"
+
+
+def is_production():
+    env = (_env_str("FLASK_ENV", "") or "").lower()
+    return env in ("production", "prod")
+
+
+def get_flask_secret_key():
+    """
+    Flask app.secret_key. Uretimde FLASK_SECRET_KEY veya SECRET_KEY zorunludur.
+    Gelistirmede tanimli degilse her calistirmada sabit kalmak uzere rastgele anahtar uretilir.
+    """
+    global _dev_flask_secret
+    key = _env_str("FLASK_SECRET_KEY") or _env_str("SECRET_KEY")
+    if key:
+        return key
+    if is_production():
+        raise RuntimeError(
+            "Uretim ortaminda FLASK_SECRET_KEY veya SECRET_KEY tanimlanmalidir (.env veya ortam)."
+        )
+    if _dev_flask_secret is None:
+        import secrets
+
+        _dev_flask_secret = secrets.token_hex(32)
+        print(
+            "UYARI: FLASK_SECRET_KEY tanimli degil; gelistirme icin gecici anahtar kullaniliyor. "
+            ".env dosyasina guclu bir FLASK_SECRET_KEY eklemeniz onerilir."
+        )
+    return _dev_flask_secret
+
+
+def get_admin_username():
+    return _env_str("ADMIN_USERNAME", "admin")
+
+
+def get_admin_initial_password():
+    """Ilk admin olusturma sifresi; yoksa RestApi __main__ rastgele uretir (yalnizca gelistirme)."""
+    return _env_str("ADMIN_INITIAL_PASSWORD")
