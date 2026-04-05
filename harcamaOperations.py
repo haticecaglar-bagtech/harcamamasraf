@@ -23,6 +23,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QTableWidgetItem, QFileDialog, QMessageBox)
 from PyQt5.QtCore import Qt
 import requests
+from config import get_api_root
 
 def ensure_class_availability():
     """PyInstaller paketlemesinde sınıf referanslarının kaybolmaması için"""
@@ -991,7 +992,7 @@ class ExcelProcessorThread(QThread):
 
                 try:
                     # API URL'sini oluştur
-                    url = f"http://localhost:5000/api/get_operations_by_stage/{stage_kodu}"
+                    url = f"{get_api_root()}/get_operations_by_stage/{stage_kodu}"
                     print(f"DEBUG - API URL: {url}")
 
                     # Thread-safe requests için QNetworkAccessManager kullanılmalı ama
@@ -2590,7 +2591,7 @@ class HarcamaTab(QWidget):
                     }
                     
                     # API'ye gönder
-                    response = requests.post('http://127.0.0.1:5000/api/harcama_talep', json=data)
+                    response = requests.post(f'{get_api_root()}/harcama_talep', json=data)
                     
                     if response.status_code == 201:
                         success_count += 1
@@ -2729,7 +2730,7 @@ class HarcamaTab(QWidget):
                     if harcama_talep_id:
                         # Güncelleme yap
                         response = requests.put(
-                            f'http://127.0.0.1:5000/api/harcama_talep/{harcama_talep_id}', 
+                            f'{get_api_root()}/harcama_talep/{harcama_talep_id}', 
                             json=data, 
                             timeout=5
                         )
@@ -2740,7 +2741,7 @@ class HarcamaTab(QWidget):
                             print(f"⚠️ Satır {idx} güncellenemedi: {response.text}")
                     else:
                         # Yeni kayıt oluştur
-                        response = requests.post('http://127.0.0.1:5000/api/harcama_talep', json=data, timeout=5)
+                        response = requests.post(f'{get_api_root()}/harcama_talep', json=data, timeout=5)
                         
                         if response.status_code == 201:
                             response_data = response.json()
@@ -2819,14 +2820,14 @@ class HarcamaTab(QWidget):
             
             if harcama_talep_id:
                 # Mevcut kaydı güncelle
-                response = requests.put(f'http://127.0.0.1:5000/api/harcama_talep/{harcama_talep_id}', json=data, timeout=5)
+                response = requests.put(f'{get_api_root()}/harcama_talep/{harcama_talep_id}', json=data, timeout=5)
                 if response.status_code == 200:
                     print(f"✅ Satır {row_idx} (ID: {harcama_talep_id}) otomatik olarak güncellendi.")
                 else:
                     print(f"⚠️ Satır {row_idx} güncellenemedi: {response.text}")
             else:
                 # Yeni kayıt ekle
-                response = requests.post('http://127.0.0.1:5000/api/harcama_talep', json=data, timeout=5)
+                response = requests.post(f'{get_api_root()}/harcama_talep', json=data, timeout=5)
                 if response.status_code == 201:
                     response_data = response.json()
                     new_id = response_data.get('harcama_talep_id')
@@ -2890,7 +2891,7 @@ class ManualAddDialog(QDialog):
         # Bölge kodlarını API'den al
         try:
             import requests
-            response = requests.get(f"http://127.0.0.1:5000/api/bolge_kodlari?user_id={self.user_id}")
+            response = requests.get(f"{get_api_root()}/bolge_kodlari?user_id={self.user_id}")
             if response.status_code == 200:
                 bolge_kodlari = response.json()
                 for kod, ad in bolge_kodlari.items():
@@ -2903,7 +2904,7 @@ class ManualAddDialog(QDialog):
         self.kaynak_tipi_combo = QComboBox()
         try:
             import requests
-            response = requests.get("http://127.0.0.1:5000/api/kaynak_tipleri")
+            response = requests.get(f"{get_api_root()}/kaynak_tipleri")
             if response.status_code == 200:
                 kaynak_tipleri = response.json()
                 for kod, ad in kaynak_tipleri.items():
@@ -2916,7 +2917,7 @@ class ManualAddDialog(QDialog):
         self.stage_combo = QComboBox()
         try:
             import requests
-            response = requests.get("http://127.0.0.1:5000/api/stages")
+            response = requests.get(f"{get_api_root()}/stages")
             if response.status_code == 200:
                 stages = response.json()
                 for kod, ad in stages.items():

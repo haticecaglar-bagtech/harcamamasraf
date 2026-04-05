@@ -14,6 +14,7 @@ from matplotlib.figure import Figure
 import numpy as np
 import xlsxwriter
 import os
+from config import get_api_root
 
 
 class UstDuzeyYoneticiTab(QWidget):
@@ -185,7 +186,7 @@ class UstDuzeyYoneticiTab(QWidget):
         
         # Tüm bölgeleri yükle
         try:
-            response = requests.get("http://127.0.0.1:5000/api/bolge_kodlari")
+            response = requests.get(f"{get_api_root()}/bolge_kodlari")
             if response.status_code == 200:
                 bolge_kodlari_dict = response.json()
                 for kod, ad in bolge_kodlari_dict.items():
@@ -879,7 +880,7 @@ class UstDuzeyYoneticiTab(QWidget):
         """)
         self.bolge_dashboard_bolge_combo.addItem("Tümü", None)
         try:
-            response = requests.get("http://127.0.0.1:5000/api/bolge_kodlari")
+            response = requests.get(f"{get_api_root()}/bolge_kodlari")
             if response.status_code == 200:
                 bolge_kodlari_dict = response.json()
                 for kod, ad in bolge_kodlari_dict.items():
@@ -1753,7 +1754,7 @@ class UstDuzeyYoneticiTab(QWidget):
         """)
         self.veri_bolge_combo.addItem("Tümü", None)
         try:
-            response = requests.get("http://127.0.0.1:5000/api/bolge_kodlari")
+            response = requests.get(f"{get_api_root()}/bolge_kodlari")
             if response.status_code == 200:
                 bolge_kodlari_dict = response.json()
                 for kod, ad in bolge_kodlari_dict.items():
@@ -2029,7 +2030,7 @@ class UstDuzeyYoneticiTab(QWidget):
                 params['stage_kodu'] = stage_kodu
             
             # Harcama verilerini yükle
-            url_harcama = "http://127.0.0.1:5000/api/harcama_talep"
+            url_harcama = f"{get_api_root()}/harcama_talep"
             response_harcama = requests.get(url_harcama, params=params)
             
             df_harcama = pd.DataFrame()
@@ -2057,7 +2058,7 @@ class UstDuzeyYoneticiTab(QWidget):
                     self.update_filter_options(expenses)
             
             # Masraf verilerini yükle
-            url_masraf = "http://127.0.0.1:5000/api/get_expenses"
+            url_masraf = f"{get_api_root()}/get_expenses"
             response_masraf = requests.get(url_masraf, params=params)
             
             df_masraf = pd.DataFrame()
@@ -2156,7 +2157,7 @@ class UstDuzeyYoneticiTab(QWidget):
                 params['stage_kodu'] = stage_kodu
             
             # Harcama verilerini yükle
-            url_harcama = "http://127.0.0.1:5000/api/harcama_talep"
+            url_harcama = f"{get_api_root()}/harcama_talep"
             response_harcama = requests.get(url_harcama, params=params)
             
             df_harcama = pd.DataFrame()
@@ -2289,7 +2290,7 @@ class UstDuzeyYoneticiTab(QWidget):
                 params['bolge_kodu'] = bolge_kodu
             
             # Harcama verilerini yükle
-            url_harcama = "http://127.0.0.1:5000/api/harcama_talep"
+            url_harcama = f"{get_api_root()}/harcama_talep"
             response_harcama = requests.get(url_harcama, params=params)
             
             df_harcama = pd.DataFrame()

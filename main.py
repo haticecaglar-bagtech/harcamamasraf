@@ -4,6 +4,7 @@ import time
 from PyQt5.QtWidgets import (QApplication, QDialog, QMessageBox, QMainWindow, 
                               QLabel, QVBoxLayout, QWidget)
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt
+from config import get_flask_host, get_flask_port, get_health_check_url
 from api_client import ApiClient
 from harcama_masraf_app import HarcamaMasrafApp
 from LoginRegister import LoginRegister
@@ -68,7 +69,12 @@ def start_flask_server():
     """Flask sunucusunu ayrı bir thread'de başlat"""
     try:
         print("Flask sunucu başlatılıyor...")
-        flask_app.run(debug=False, host='0.0.0.0', port=5000, use_reloader=False)
+        flask_app.run(
+            debug=False,
+            host=get_flask_host(),
+            port=get_flask_port(),
+            use_reloader=False,
+        )
     except Exception as e:
         print(f"Flask sunucu hatası: {e}")
 
@@ -79,7 +85,7 @@ def wait_for_flask_server(max_attempts=30):
 
     for attempt in range(max_attempts):
         try:
-            response = requests.get('http://localhost:5000/', timeout=2)
+            response = requests.get(get_health_check_url(), timeout=2)
             print("Flask sunucu hazır!")
             return True
         except:

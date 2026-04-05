@@ -1,4 +1,5 @@
 import os
+from config import get_database_path, get_flask_host, get_flask_port
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash
@@ -10,8 +11,8 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # --- SQLite Veritabanı Ayarları (Ücretsiz ve Global) ---
-# Veritabanı dosyası uygulama klasöründe oluşturulacak
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'harcama_masraf.db')
+# Veritabanı yolu: config.py + ortam degiskeni (DATABASE_PATH / SQLITE_PATH)
+DATABASE_PATH = get_database_path()
 
 def get_db_connection():
     """SQLite veritabanı bağlantısı oluşturur."""
@@ -2835,6 +2836,4 @@ if __name__ == '__main__':
     
     print("🚀 Flask sunucusu başlatılıyor...")
     print(f"📁 SQLite veritabanı: {DATABASE_PATH}")
-    # Production için port environment variable'dan alınabilir
-    port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    app.run(debug=False, host=get_flask_host(), port=get_flask_port())

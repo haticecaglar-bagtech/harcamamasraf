@@ -8,6 +8,8 @@ from PyQt5.QtGui import QFont, QPixmap, QIcon, QPainter, QBrush, QLinearGradient
 import os
 import sys
 
+from config import api_url
+
 
 def get_resource_path(relative_path):
     try:
@@ -422,7 +424,7 @@ class LoginRegister(QDialog):
         try:
             import requests
 
-            url = "http://127.0.0.1:5000/api/login"  # Flask sunucunuzun URL'i
+            url = api_url("login")
             data = {
                 'username': username,
                 'password': password

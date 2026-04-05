@@ -10,8 +10,7 @@ import os
 import requests
 from werkzeug.security import generate_password_hash
 
-# API base URL
-API_BASE_URL = "http://127.0.0.1:5000"
+from config import get_api_root
 
 def print_menu():
     """Ana menüyü göster"""
@@ -37,7 +36,7 @@ def add_user():
         return
     
     try:
-        response = requests.post(f"{API_BASE_URL}/api/register", json={
+        response = requests.post(f"{get_api_root()}/register", json={
             'username': username,
             'password': password
         })
@@ -87,7 +86,7 @@ def update_user_role_with_username(username):
         return
     
     try:
-        response = requests.put(f"{API_BASE_URL}/api/users/{username}/role", json={
+        response = requests.put(f"{get_api_root()}/users/{username}/role", json={
             'role': role
         })
         
@@ -132,7 +131,7 @@ def add_user_bolge_with_username(username):
     show_all = input("\nTüm bölge kodlarını görmek ister misiniz? (e/h): ").strip().lower()
     if show_all == 'e':
         try:
-            response = requests.get(f"{API_BASE_URL}/api/bolge_kodlari")
+            response = requests.get(f"{get_api_root()}/bolge_kodlari")
             if response.status_code == 200:
                 bolge_kodlari = response.json()
                 print("\nTüm Bölge Kodları:")
@@ -152,7 +151,7 @@ def add_user_bolge_with_username(username):
         return
     
     try:
-        response = requests.post(f"{API_BASE_URL}/api/users/{username}/bolge", json={
+        response = requests.post(f"{get_api_root()}/users/{username}/bolge", json={
             'bolge_kodu': bolge_kodu
         })
         
@@ -182,7 +181,7 @@ def view_user_info():
     username = input("Kullanıcı Adı: ").strip()
     
     try:
-        response = requests.get(f"{API_BASE_URL}/api/users/{username}")
+        response = requests.get(f"{get_api_root()}/users/{username}")
         
         if response.status_code == 200:
             user_data = response.json()
@@ -208,7 +207,7 @@ def list_all_users():
     print("\n--- Tüm Kullanıcılar ---")
     
     try:
-        response = requests.get(f"{API_BASE_URL}/api/users")
+        response = requests.get(f"{get_api_root()}/users")
         
         if response.status_code == 200:
             users = response.json().get('users', [])
@@ -229,7 +228,7 @@ def list_all_users():
 def main():
     """Ana fonksiyon"""
     print("\n🚀 Kullanıcı Yönetim Sistemine Hoş Geldiniz!")
-    print("⚠️  Not: API sunucusunun çalıştığından emin olun (http://127.0.0.1:5000)")
+    print(f"⚠️  Not: API sunucusunun çalıştığından emin olun ({get_api_root()})")
     
     while True:
         print_menu()

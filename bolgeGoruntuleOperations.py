@@ -11,6 +11,7 @@ import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils.dataframe import dataframe_to_rows
+from config import get_api_root
 
 
 class BolgeGoruntuleTab(QWidget):
@@ -48,7 +49,7 @@ class BolgeGoruntuleTab(QWidget):
         # else:
         #     # Admin ve üst düzey yönetici için tüm bölgeler
         #     try:
-        #         response = requests.get(f"http://127.0.0.1:5000/api/bolge_kodlari?user_id={self.user_id}")
+        #         response = requests.get(f"{get_api_root()}/bolge_kodlari?user_id={self.user_id}")
         #         if response.status_code == 200:
         #             bolge_kodlari_dict = response.json()
         #             for kod, ad in bolge_kodlari_dict.items():
@@ -249,7 +250,7 @@ class BolgeGoruntuleTab(QWidget):
         # TEST İÇİN KALDIRILDI
         # Safha seçeneklerini yükle
         # try:
-        #     url = f"http://127.0.0.1:5000/api/harcama_talep?user_id={self.user_id}"
+        #     url = f"{get_api_root()}/harcama_talep?user_id={self.user_id}"
         #     response = requests.get(url)
         #     if response.status_code == 200:
         #         data = response.json()
@@ -301,7 +302,7 @@ class BolgeGoruntuleTab(QWidget):
             #     params['stage_kodu'] = stage_kodu
             
             # URL oluştur
-            url = "http://127.0.0.1:5000/api/harcama_talep"
+            url = f"{get_api_root()}/harcama_talep"
             print(f"DEBUG - Harcama talep API çağrısı: {url}")
             print(f"DEBUG - Params: {params}")
             response = requests.get(url, params=params)
@@ -400,7 +401,7 @@ class BolgeGoruntuleTab(QWidget):
             #     params['stage_kodu'] = stage_kodu
             
             # URL oluştur
-            url = "http://127.0.0.1:5000/api/get_expenses"
+            url = f"{get_api_root()}/get_expenses"
             response = requests.get(url, params=params)
             
             if response.status_code == 200:
@@ -506,7 +507,7 @@ class BolgeGoruntuleTab(QWidget):
             }
             
             print(f"DEBUG - Test kayıt ekleniyor: {test_data}")
-            response = requests.post('http://127.0.0.1:5000/api/harcama_talep', json=test_data, timeout=5)
+            response = requests.post(f'{get_api_root()}/harcama_talep', json=test_data, timeout=5)
             
             print(f"DEBUG - Test kayıt yanıtı: {response.status_code} - {response.text}")
             
@@ -614,7 +615,7 @@ class BolgeGoruntuleTab(QWidget):
                     'aciklama': aciklama_edit.text()
                 }
                 
-                url = f"http://127.0.0.1:5000/api/harcama_talep/{harcama_talep_id}"
+                url = f"{get_api_root()}/harcama_talep/{harcama_talep_id}"
                 response = requests.put(url, json=update_data, timeout=10)
                 
                 if response.status_code == 200:
@@ -644,7 +645,7 @@ class BolgeGoruntuleTab(QWidget):
                 harcama_talep_id = int(self.harcama_table.item(selected_row, 0).text())
                 
                 # API'ye silme isteği gönder
-                url = f"http://127.0.0.1:5000/api/harcama_talep/{harcama_talep_id}"
+                url = f"{get_api_root()}/harcama_talep/{harcama_talep_id}"
                 response = requests.delete(url, timeout=10)
                 
                 if response.status_code == 200:
@@ -670,7 +671,7 @@ class BolgeGoruntuleTab(QWidget):
         
         if reply == QMessageBox.Yes:
             try:
-                url = "http://127.0.0.1:5000/api/clear_harcama_talep"
+                url = f"{get_api_root()}/clear_harcama_talep"
                 response = requests.delete(url, timeout=10)
                 
                 if response.status_code == 200:
@@ -696,7 +697,7 @@ class BolgeGoruntuleTab(QWidget):
         
         if reply == QMessageBox.Yes:
             try:
-                url = "http://127.0.0.1:5000/api/clear_all_expenses"
+                url = f"{get_api_root()}/clear_all_expenses"
                 response = requests.delete(url, timeout=10)
                 
                 if response.status_code == 200:
@@ -850,7 +851,7 @@ class BolgeGoruntuleTab(QWidget):
                     'tutar': tutar_edit.value()
                 }
                 
-                url = f"http://127.0.0.1:5000/api/update_expense/{expense_id}"
+                url = f"{get_api_root()}/update_expense/{expense_id}"
                 response = requests.put(url, json=update_data, timeout=10)
                 
                 if response.status_code == 200:
@@ -880,7 +881,7 @@ class BolgeGoruntuleTab(QWidget):
                 expense_id = int(self.masraf_table.item(selected_row, 0).text())
                 
                 # API'ye silme isteği gönder
-                url = f"http://127.0.0.1:5000/api/delete_expense/{expense_id}"
+                url = f"{get_api_root()}/delete_expense/{expense_id}"
                 response = requests.delete(url, timeout=10)
                 
                 if response.status_code == 200:

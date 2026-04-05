@@ -40,3 +40,13 @@ pip freeze
 ```
 
 > Not: `venv/` ve `.venv/` klasorleri `.gitignore` icindedir; depoya eklenmez.
+
+## 5) Ortam dosyasi (.env)
+
+Uygulama ayarlari icin proje kokunde `.env` kullanabilirsiniz (ornek: `.env.example`).
+
+```powershell
+copy .env.example .env
+```
+
+`config.py` yuklendiginde `.env` otomatik okunur. Gercek sifre veya ozel yollar burada tutulmamali ise yalnizca yerel makinede `.env` olusturun; dosya `.gitignore` ile repoya eklenmez.

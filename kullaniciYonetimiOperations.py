@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 import requests
+from config import get_api_root
 
 
 class KullaniciYonetimiTab(QWidget):
@@ -85,7 +86,7 @@ class KullaniciYonetimiTab(QWidget):
     def load_users(self):
         """Tüm kullanıcıları yükle"""
         try:
-            response = requests.get("http://127.0.0.1:5000/api/users")
+            response = requests.get(f"{get_api_root()}/users")
             
             if response.status_code == 200:
                 data = response.json()
@@ -196,7 +197,7 @@ class KullaniciYonetimiTab(QWidget):
         
         # Tüm bölgeleri yükle
         try:
-            response = requests.get("http://127.0.0.1:5000/api/bolge_kodlari")
+            response = requests.get(f"{get_api_root()}/bolge_kodlari")
             if response.status_code == 200:
                 bolge_kodlari = response.json()
                 for kod, ad in bolge_kodlari.items():
@@ -228,7 +229,7 @@ class KullaniciYonetimiTab(QWidget):
             
             # Kullanıcıyı ekle
             try:
-                response = requests.post("http://127.0.0.1:5000/api/register", json={
+                response = requests.post(f"{get_api_root()}/register", json={
                     'username': username,
                     'password': password,
                     'admin_username': self.admin_username,
@@ -239,7 +240,7 @@ class KullaniciYonetimiTab(QWidget):
                     # Rol atama
                     if role != 'normal':
                         role_response = requests.put(
-                            f"http://127.0.0.1:5000/api/users/{username}/role",
+                            f"{get_api_root()}/users/{username}/role",
                             json={'role': role}
                         )
                     
@@ -253,7 +254,7 @@ class KullaniciYonetimiTab(QWidget):
                             
                             # Her bölgeyi ekle
                             bolge_response = requests.post(
-                                f"http://127.0.0.1:5000/api/users/{username}/bolge",
+                                f"{get_api_root()}/users/{username}/bolge",
                                 json={'bolge_kodu': bolge_kodu}
                             )
                     
@@ -279,7 +280,7 @@ class KullaniciYonetimiTab(QWidget):
         
         # Kullanıcı bilgilerini al
         try:
-            response = requests.get(f"http://127.0.0.1:5000/api/users/{username}")
+            response = requests.get(f"{get_api_root()}/users/{username}")
             if response.status_code != 200:
                 QMessageBox.warning(self, "Uyarı", "Kullanıcı bilgileri alınamadı.")
                 return
@@ -322,7 +323,7 @@ class KullaniciYonetimiTab(QWidget):
         
         # Tüm bölgeleri yükle
         try:
-            response = requests.get("http://127.0.0.1:5000/api/bolge_kodlari")
+            response = requests.get(f"{get_api_root()}/bolge_kodlari")
             if response.status_code == 200:
                 bolge_kodlari = response.json()
                 for kod, ad in bolge_kodlari.items():
@@ -353,7 +354,7 @@ class KullaniciYonetimiTab(QWidget):
             if new_role != current_role:
                 try:
                     role_response = requests.put(
-                        f"http://127.0.0.1:5000/api/users/{username}/role",
+                        f"{get_api_root()}/users/{username}/role",
                         json={'role': new_role}
                     )
                     if role_response.status_code == 200:
@@ -384,7 +385,7 @@ class KullaniciYonetimiTab(QWidget):
             for bolge_kodu in to_add:
                 try:
                     requests.post(
-                        f"http://127.0.0.1:5000/api/users/{username}/bolge",
+                        f"{get_api_root()}/users/{username}/bolge",
                         json={'bolge_kodu': bolge_kodu}
                     )
                 except Exception as e:

@@ -60,6 +60,7 @@ def pyinstall():
         "--hidden-import=matplotlib.backends.backend_qt5agg.FigureCanvasQTAgg",
         # Python modülleri - tüm dosyalar otomatik bulunur ama emin olmak için
         "--hidden-import=RestApi",
+        "--hidden-import=config",
         "--hidden-import=harcamaOperations",
         "--hidden-import=masrafOperations",
         "--hidden-import=kodOperations",

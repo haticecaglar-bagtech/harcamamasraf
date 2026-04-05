@@ -7,10 +7,12 @@ import pyodbc
 import os
 from werkzeug.security import generate_password_hash
 
-# SQL Server bağlantı bilgileri (eski)
-SERVER_NAME = r'DESKTOP-GVRQ3CP'
-DATABASE_NAME = r'harcama_masraf_db'
-DRIVER_NAME = r'ODBC Driver 11 for SQL Server'
+from config import get_database_path
+
+# SQL Server bağlantı bilgileri (eski) — ortam degiskeni ile uzerine yazilabilir
+SERVER_NAME = os.environ.get("SQLSERVER_SERVER", r"DESKTOP-GVRQ3CP")
+DATABASE_NAME = os.environ.get("SQLSERVER_DATABASE", r"harcama_masraf_db")
+DRIVER_NAME = os.environ.get("SQLSERVER_DRIVER", r"ODBC Driver 11 for SQL Server")
 
 connection_string_sqlserver = (
     f'DRIVER={{{DRIVER_NAME}}};'
@@ -21,8 +23,8 @@ connection_string_sqlserver = (
     f'Encrypt=no;'
 )
 
-# SQLite veritabanı yolu
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'harcama_masraf.db')
+# SQLite veritabanı yolu (config.py + DATABASE_PATH / SQLITE_PATH)
+DATABASE_PATH = get_database_path()
 
 def get_sqlserver_connection():
     """SQL Server bağlantısı"""

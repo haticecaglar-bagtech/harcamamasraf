@@ -1,12 +1,14 @@
 import requests
 import json
 
+from config import get_api_root
+
 
 class ApiClient:
     """API Client for communicating with the Flask API"""
 
-    def __init__(self, base_url="http://localhost:5000/api"):
-        self.base_url = base_url
+    def __init__(self, base_url=None):
+        self.base_url = base_url if base_url is not None else get_api_root()
 
     def _make_request(self, endpoint, method="GET", data=None):
         """Make a request to the API"""
