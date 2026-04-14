@@ -1,4 +1,4 @@
-"""SQLAlchemy modelleri — mevcut SQLite şeması ile uyumlu."""
+"""SQLAlchemy modelleri — SQLite ve PostgreSQL ile uyumlu sema."""
 
 from __future__ import annotations
 

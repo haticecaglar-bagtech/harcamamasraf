@@ -12,6 +12,8 @@ pyodbc==5.1.0
 rapidfuzz==3.9.6
 requests==2.32.3
 SQLAlchemy==2.0.23
+alembic==1.13.2
+psycopg2-binary==2.9.9
 scikit-fuzzy==0.4.2
 Werkzeug==2.3.7
 xlrd==2.0.1

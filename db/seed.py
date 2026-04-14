@@ -1,6 +1,6 @@
-"""Referans tablolarina ORM ile idempotent tohum (SQLite ON CONFLICT DO NOTHING)."""
+"""Referans tablolarina ORM ile idempotent tohum (SQLite / PostgreSQL ON CONFLICT DO NOTHING)."""
 
-from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from db.models import (

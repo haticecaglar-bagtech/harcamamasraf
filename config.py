@@ -4,7 +4,9 @@ Merkezi uygulama ayarlari. Ortam degiskenleri ile uzerine yazilabilir.
 Ortam degiskenleri (ornek):
   API_ORIGIN veya API_BASE_URL  — Ornek: http://127.0.0.1:5000 (sonunda / yok)
   API_PREFIX                    — Varsayilan: /api
-  DATABASE_PATH veya SQLITE_PATH — SQLite dosya yolu (mutlak veya goreceli)
+  DATABASE_URL — SQLAlchemy veritabani URLi (PostgreSQL: postgresql+psycopg2://user:sifre@host:5432/dbadi)
+               Belirtilmezse SQLite kullanilir (asagidaki DATABASE_PATH / SQLITE_PATH).
+  DATABASE_PATH veya SQLITE_PATH — SQLite dosya yolu (mutlak veya goreceli); DATABASE_URL yokken
   FLASK_HOST                    — Varsayilan: 0.0.0.0
   FLASK_PORT veya PORT          — Varsayilan: 5000 (bulut platformlari genelde PORT kullanir)
 
@@ -91,11 +93,39 @@ def api_url(path):
 
 
 def get_database_path():
-    """SQLite veritabani dosya yolu."""
+    """SQLite veritabani dosya yolu (DATABASE_URL kullanilmiyorken)."""
     custom = _env_str("DATABASE_PATH") or _env_str("SQLITE_PATH")
     if custom:
         return os.path.abspath(custom)
     return os.path.join(_PROJECT_ROOT, "harcama_masraf.db")
+
+
+def get_database_url():
+    """SQLAlchemy baglanti URLi. DATABASE_URL tanimliysa onu; aksi halde SQLite dosya URLi."""
+    url = _env_str("DATABASE_URL")
+    if url:
+        return url.strip()
+    path = os.path.abspath(get_database_path())
+    return "sqlite:///" + path.replace("\\", "/")
+
+
+def is_postgresql_database():
+    u = get_database_url().lower()
+    return u.startswith("postgresql") or u.startswith("postgres:")
+
+
+def sanitize_database_url(url: str) -> str:
+    """Log/cikti icin parola maskeleme (postgresql+psycopg2://user:pass@host/db)."""
+    if not url or "://" not in url:
+        return url
+    scheme, rest = url.split("://", 1)
+    if "@" not in rest:
+        return url
+    creds, hostpart = rest.rsplit("@", 1)
+    if ":" not in creds:
+        return url
+    user = creds.split(":", 1)[0]
+    return f"{scheme}://{user}:***@{hostpart}"
 
 
 def get_flask_host():

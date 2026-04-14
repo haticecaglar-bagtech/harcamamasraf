@@ -3,11 +3,14 @@ from config import (
     get_admin_initial_password,
     get_admin_username,
     get_database_path,
+    get_database_url,
     get_flask_host,
     get_flask_port,
     get_flask_secret_key,
     get_jwt_expiration_seconds,
+    is_postgresql_database,
     is_production,
+    sanitize_database_url,
 )
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -910,5 +913,8 @@ if __name__ == '__main__':
         traceback.print_exc()
 
     print("🚀 Flask sunucusu başlatılıyor...")
-    print(f"📁 SQLite veritabanı: {DATABASE_PATH}")
+    if is_postgresql_database():
+        print(f"🐘 PostgreSQL: {sanitize_database_url(get_database_url())}")
+    else:
+        print(f"📁 SQLite veritabanı: {DATABASE_PATH}")
     app.run(debug=False, host=get_flask_host(), port=get_flask_port())

@@ -2,25 +2,23 @@
 
 from __future__ import annotations
 
-import os
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from config import get_database_path
+from config import get_database_url
 
 
-def _sqlite_url() -> str:
-    path = os.path.abspath(get_database_path())
-    return "sqlite:///" + path.replace("\\", "/")
+def _engine_kwargs(url: str) -> dict:
+    if url.lower().startswith("sqlite"):
+        return {"connect_args": {"check_same_thread": False}}
+    # PostgreSQL ve diger sunucular
+    return {"pool_pre_ping": True}
 
 
-engine = create_engine(
-    _sqlite_url(),
-    connect_args={"check_same_thread": False},
-    future=True,
-)
+_url = get_database_url()
+engine = create_engine(_url, **_engine_kwargs(_url), future=True)
 
 SessionFactory = sessionmaker(bind=engine, autocommit=False, autoflush=False, future=True)
 
