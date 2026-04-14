@@ -46,6 +46,12 @@ def _teardown_sqlalchemy_session(exc):
     close_flask_session()
 
 
+@app.route("/health", methods=["GET"])
+def health():
+    """Docker / yuk dengeleyici saglik kontrolu (veritabani sorgusu yok)."""
+    return jsonify({"status": "ok"}), 200
+
+
 @app.route('/api/register', methods=['POST'])
 def register():
     """Kullanıcı kayıt - Sadece admin tarafından kullanılabilir"""
