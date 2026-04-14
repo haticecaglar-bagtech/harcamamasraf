@@ -19,7 +19,12 @@ from api_error_handlers import register_global_error_handlers
 from backend_logging import configure_backend_logging
 from jwt_auth import issue_access_token, register_jwt_middleware
 from db.init_database import migrate_db
-from db.session import SessionFactory, close_flask_session, get_flask_session
+from db.session import (
+    close_flask_session,
+    flask_transaction,
+    get_flask_session,
+    session_scope,
+)
 from repositories import CatalogRepository, ExpenseRepository, HarcamaRepository, UserRepository
 
 app = Flask(__name__)
@@ -54,23 +59,21 @@ def register():
     if not admin_username or not admin_password:
         return jsonify({'error': 'Admin credentials required'}), 403
 
-    sess = get_flask_session()
     try:
-        users = UserRepository(sess)
-        admin_u = users.get_by_username(admin_username)
-        if not admin_u:
-            return jsonify({'error': 'Admin user not found'}), 403
-        if not check_password_hash(admin_u.password_hash, admin_password):
-            return jsonify({'error': 'Invalid admin credentials'}), 403
-        if admin_u.role != 'admin':
-            return jsonify({'error': 'Only admin users can register new users'}), 403
-        if users.username_exists(username):
-            return jsonify({'error': 'Username already exists'}), 409
-        users.create(username, generate_password_hash(password), 'normal')
-        sess.commit()
-        return jsonify({'message': 'Kullanıcı Başarıyla Kayıt Edildi'}), 201
+        with flask_transaction() as sess:
+            users = UserRepository(sess)
+            admin_u = users.get_by_username(admin_username)
+            if not admin_u:
+                return jsonify({'error': 'Admin user not found'}), 403
+            if not check_password_hash(admin_u.password_hash, admin_password):
+                return jsonify({'error': 'Invalid admin credentials'}), 403
+            if admin_u.role != 'admin':
+                return jsonify({'error': 'Only admin users can register new users'}), 403
+            if users.username_exists(username):
+                return jsonify({'error': 'Username already exists'}), 409
+            users.create(username, generate_password_hash(password), 'normal')
+            return jsonify({'message': 'Kullanıcı Başarıyla Kayıt Edildi'}), 201
     except Exception as e:
-        sess.rollback()
         print(f"DB error: {e}")
         return jsonify({'error': 'Database error'}), 500
 
@@ -85,6 +88,7 @@ def login():
 
     migrate_db()
 
+    # Ilk admin olusturma hemen commit edilir; sonraki adimlarda hata olursa admin kalir (onceki davranis).
     sess = get_flask_session()
     try:
         users = UserRepository(sess)
@@ -202,13 +206,11 @@ def add_kaynak_tipi():
     data = request.json
     if not data or 'kod' not in data or 'ad' not in data:
         return jsonify({"success": False, "message": "Geçersiz istek verisi"}), 400
-    sess = get_flask_session()
     try:
-        CatalogRepository(sess).add_kaynak_tipi(data['kod'], data['ad'])
-        sess.commit()
-        return jsonify({"success": True, "message": "Kaynak tipi başarıyla eklendi"}), 201
+        with flask_transaction() as sess:
+            CatalogRepository(sess).add_kaynak_tipi(data['kod'], data['ad'])
+            return jsonify({"success": True, "message": "Kaynak tipi başarıyla eklendi"}), 201
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/add_stage', methods=['POST'])
@@ -216,13 +218,11 @@ def add_stage():
     data = request.json
     if not data or 'kod' not in data or 'ad' not in data:
         return jsonify({"success": False, "message": "Geçersiz istek verisi"}), 400
-    sess = get_flask_session()
     try:
-        CatalogRepository(sess).add_stage(data['kod'], data['ad'])
-        sess.commit()
-        return jsonify({"success": True, "message": "Stage başarıyla eklendi"}), 201
+        with flask_transaction() as sess:
+            CatalogRepository(sess).add_stage(data['kod'], data['ad'])
+            return jsonify({"success": True, "message": "Stage başarıyla eklendi"}), 201
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/add_operasyon', methods=['POST'])
@@ -235,31 +235,29 @@ def add_operasyon():
     operasyon_kod = data['operasyon_kod']
     operasyon_ad = data['operasyon_ad']
 
-    sess = get_flask_session()
     try:
-        cat = CatalogRepository(sess)
-        stage_ad = cat.get_stage_ad(stage_kod)
-        if not stage_ad:
-            return jsonify({
-                "success": False,
-                "message": f"'{stage_kod}' kodlu stage DB'de bulunamadı. Lütfen önce stage kodları tablosundan bu stage'i ekleyin.",
-                "redirect": "stages_tab"
-            }), 201
+        with flask_transaction() as sess:
+            cat = CatalogRepository(sess)
+            stage_ad = cat.get_stage_ad(stage_kod)
+            if not stage_ad:
+                return jsonify({
+                    "success": False,
+                    "message": f"'{stage_kod}' kodlu stage DB'de bulunamadı. Lütfen önce stage kodları tablosundan bu stage'i ekleyin.",
+                    "redirect": "stages_tab"
+                }), 201
 
-        existing_ad = cat.find_operasyon(stage_kod, operasyon_kod)
-        if existing_ad:
-            return jsonify({
-                "success": False,
-                "message": f"Bu operasyon zaten mevcut: Stage {stage_kod}, Operasyon {operasyon_kod}. Mevcut ad: {existing_ad}"
-            }), 400
+            existing_ad = cat.find_operasyon(stage_kod, operasyon_kod)
+            if existing_ad:
+                return jsonify({
+                    "success": False,
+                    "message": f"Bu operasyon zaten mevcut: Stage {stage_kod}, Operasyon {operasyon_kod}. Mevcut ad: {existing_ad}"
+                }), 400
 
-        kombine_kod = f"{stage_kod}{operasyon_kod}"
-        kombine_ad = f"{stage_ad}_{operasyon_ad}"
-        cat.add_operasyon_pair(stage_kod, operasyon_kod, operasyon_ad, kombine_kod, kombine_ad)
-        sess.commit()
-        return jsonify({"success": True, "message": "Operasyon başarıyla eklendi"}), 201
+            kombine_kod = f"{stage_kod}{operasyon_kod}"
+            kombine_ad = f"{stage_ad}_{operasyon_ad}"
+            cat.add_operasyon_pair(stage_kod, operasyon_kod, operasyon_ad, kombine_kod, kombine_ad)
+            return jsonify({"success": True, "message": "Operasyon başarıyla eklendi"}), 201
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/add_stage_operasyon', methods=['POST'])
@@ -267,13 +265,11 @@ def add_stage_operasyon():
     data = request.json
     if not data or 'kod' not in data or 'ad' not in data:
         return jsonify({"success": False, "message": "Geçersiz istek verisi"}), 400
-    sess = get_flask_session()
     try:
-        CatalogRepository(sess).add_stage_operasyon_row(data['kod'], data['ad'])
-        sess.commit()
-        return jsonify({"success": True, "message": "Stage-operasyon başarıyla eklendi"}), 201
+        with flask_transaction() as sess:
+            CatalogRepository(sess).add_stage_operasyon_row(data['kod'], data['ad'])
+            return jsonify({"success": True, "message": "Stage-operasyon başarıyla eklendi"}), 201
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/add_birim', methods=['POST'])
@@ -282,26 +278,22 @@ def add_birim():
     if not data or 'birim' not in data or 'ucret' not in data:
         return jsonify({"success": False, "message": "Geçersiz istek verisi"}), 400
 
-    sess = get_flask_session()
     try:
-        CatalogRepository(sess).add_birim(data['birim'], float(data['ucret']))
-        sess.commit()
-        return jsonify({"success": True, "message": "Birim başarıyla eklendi"}), 201
+        with flask_transaction() as sess:
+            CatalogRepository(sess).add_birim(data['birim'], float(data['ucret']))
+            return jsonify({"success": True, "message": "Birim başarıyla eklendi"}), 201
     except Exception as e:
-        sess.rollback()
         print("Veritabanı hatası:", e)
         return jsonify({"success": False, "message": str(e)}), 500
 
 # Bölge Kodları
 @app.route('/api/delete_bolge/<kod>', methods=['DELETE'])
 def delete_bolge(kod):
-    sess = get_flask_session()
     try:
-        CatalogRepository(sess).delete_bolge(kod)
-        sess.commit()
-        return jsonify({"success": True, "message": "Bölge silindi"}), 200
+        with flask_transaction() as sess:
+            CatalogRepository(sess).delete_bolge(kod)
+            return jsonify({"success": True, "message": "Bölge silindi"}), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/update_bolge', methods=['PUT'])
@@ -310,25 +302,21 @@ def update_bolge():
     if not data or 'eski_kod' not in data or 'yeni_kod' not in data or 'ad' not in data:
         return jsonify({"success": False, "message": "Geçersiz istek verisi"}), 400
 
-    sess = get_flask_session()
     try:
-        CatalogRepository(sess).update_bolge_kod(data['eski_kod'], data['yeni_kod'], data['ad'])
-        sess.commit()
-        return jsonify({"success": True, "message": "Bölge güncellendi"}), 200
+        with flask_transaction() as sess:
+            CatalogRepository(sess).update_bolge_kod(data['eski_kod'], data['yeni_kod'], data['ad'])
+            return jsonify({"success": True, "message": "Bölge güncellendi"}), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 # Kaynak Tipi
 @app.route('/api/delete_kaynak_tipi/<kod>', methods=['DELETE'])
 def delete_kaynak_tipi(kod):
-    sess = get_flask_session()
     try:
-        CatalogRepository(sess).delete_kaynak_tipi(kod)
-        sess.commit()
-        return jsonify({"success": True, "message": "Kaynak tipi silindi"}), 200
+        with flask_transaction() as sess:
+            CatalogRepository(sess).delete_kaynak_tipi(kod)
+            return jsonify({"success": True, "message": "Kaynak tipi silindi"}), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/update_kaynak_tipi', methods=['PUT'])
@@ -336,25 +324,21 @@ def update_kaynak_tipi():
     data = request.json
     if not data or 'kod' not in data or 'yeni_kod' not in data or 'ad' not in data:
         return jsonify({"success": False, "message": "Geçersiz istek verisi"}), 400
-    sess = get_flask_session()
     try:
-        CatalogRepository(sess).update_kaynak_tipi_kod(data['kod'], data['yeni_kod'], data['ad'])
-        sess.commit()
-        return jsonify({"success": True, "message": "Kaynak tipi güncellendi"}), 200
+        with flask_transaction() as sess:
+            CatalogRepository(sess).update_kaynak_tipi_kod(data['kod'], data['yeni_kod'], data['ad'])
+            return jsonify({"success": True, "message": "Kaynak tipi güncellendi"}), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 # Stage
 @app.route('/api/delete_stage/<kod>', methods=['DELETE'])
 def delete_stage(kod):
-    sess = get_flask_session()
     try:
-        CatalogRepository(sess).delete_stage(kod)
-        sess.commit()
-        return jsonify({"success": True, "message": "Stage silindi"}), 200
+        with flask_transaction() as sess:
+            CatalogRepository(sess).delete_stage(kod)
+            return jsonify({"success": True, "message": "Stage silindi"}), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/update_stage', methods=['PUT'])
@@ -362,25 +346,21 @@ def update_stage():
     data = request.json
     if not data or 'kod' not in data or 'yeni_kod' not in data or 'ad' not in data:
         return jsonify({"success": False, "message": "Geçersiz istek verisi"}), 400
-    sess = get_flask_session()
     try:
-        CatalogRepository(sess).update_stage_kod(data['kod'], data['yeni_kod'], data['ad'])
-        sess.commit()
-        return jsonify({"success": True, "message": "Stage güncellendi"}), 200
+        with flask_transaction() as sess:
+            CatalogRepository(sess).update_stage_kod(data['kod'], data['yeni_kod'], data['ad'])
+            return jsonify({"success": True, "message": "Stage güncellendi"}), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 # Operasyon
 @app.route('/api/delete_operasyon/<stage_kod>/<op_kod>', methods=['DELETE'])
 def delete_operasyon(stage_kod, op_kod):
-    sess = get_flask_session()
     try:
-        CatalogRepository(sess).delete_operasyon(stage_kod, op_kod)
-        sess.commit()
-        return jsonify({"success": True, "message": "Operasyon silindi"}), 200
+        with flask_transaction() as sess:
+            CatalogRepository(sess).delete_operasyon(stage_kod, op_kod)
+            return jsonify({"success": True, "message": "Operasyon silindi"}), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/update_operasyon', methods=['PUT'])
@@ -388,27 +368,23 @@ def update_operasyon():
     data = request.json
     if not data or 'stage_kod' not in data or 'operasyon_kod' not in data or 'operasyon_ad' not in data:
         return jsonify({"success": False, "message": "Geçersiz istek verisi"}), 400
-    sess = get_flask_session()
     try:
-        CatalogRepository(sess).update_operasyon_ad(
-            data['stage_kod'], data['operasyon_kod'], data['operasyon_ad']
-        )
-        sess.commit()
-        return jsonify({"success": True, "message": "Operasyon güncellendi"}), 200
+        with flask_transaction() as sess:
+            CatalogRepository(sess).update_operasyon_ad(
+                data['stage_kod'], data['operasyon_kod'], data['operasyon_ad']
+            )
+            return jsonify({"success": True, "message": "Operasyon güncellendi"}), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 # Birim
 @app.route('/api/delete_birim/<birim>', methods=['DELETE'])
 def delete_birim(birim):
-    sess = get_flask_session()
     try:
-        CatalogRepository(sess).delete_birim_by_name(birim)
-        sess.commit()
-        return jsonify({"success": True, "message": "Birim silindi"}), 200
+        with flask_transaction() as sess:
+            CatalogRepository(sess).delete_birim_by_name(birim)
+            return jsonify({"success": True, "message": "Birim silindi"}), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/update_birim', methods=['PUT'])
@@ -416,13 +392,11 @@ def update_birim():
     data = request.json
     if not data or 'birim' not in data or 'ucret' not in data:
         return jsonify({"success": False, "message": "Geçersiz istek verisi"}), 400
-    sess = get_flask_session()
     try:
-        CatalogRepository(sess).update_birim_ucret(data['birim'], float(data['ucret']))
-        sess.commit()
-        return jsonify({"success": True, "message": "Birim güncellendi"}), 200
+        with flask_transaction() as sess:
+            CatalogRepository(sess).update_birim_ucret(data['birim'], float(data['ucret']))
+            return jsonify({"success": True, "message": "Birim güncellendi"}), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 
@@ -447,43 +421,41 @@ def save_expense():
         print(f"Tutar dönüşüm hatası: {str(e)}")  # Debug log
         return jsonify({"success": False, "message": f"Geçersiz tutar formatı: {str(e)}"}), 400
 
-    sess = get_flask_session()
     try:
-        er = ExpenseRepository(sess)
-        expense_id = er.save(
-            user_id=data['user_id'],
-            tarih=data['tarih'],
-            bolge_kodu=data.get('bolge_kodu'),
-            kaynak_tipi=data.get('kaynak_tipi'),
-            stage=data.get('stage'),
-            stage_operasyon=data.get('stage_operasyon'),
-            no_su=data.get('no_su'),
-            kimden_alindigi=data.get('kimden_alindigi'),
-            aciklama=data.get('aciklama'),
-            tutar=tutar,
-        )
-        sess.commit()
-        print(f"Successfully saved expense with ID: {expense_id}")  # Debug log
-        return jsonify({
-            'success': True,
-            'message': 'Masraf başarıyla kaydedildi.',
-            'data': {
-                'expense_id': expense_id,
-                'expense': {
-                    'tarih': data['tarih'],
-                    'bolge_kodu': data['bolge_kodu'],
-                    'kaynak_tipi': data['kaynak_tipi'],
-                    'stage': data['stage'],
-                    'stage_operasyon': data['stage_operasyon'],
-                    'no_su': data['no_su'],
-                    'kimden_alindigi': data['kimden_alindigi'],
-                    'aciklama': data['aciklama'],
-                    'tutar': tutar
+        with flask_transaction() as sess:
+            er = ExpenseRepository(sess)
+            expense_id = er.save(
+                user_id=data['user_id'],
+                tarih=data['tarih'],
+                bolge_kodu=data.get('bolge_kodu'),
+                kaynak_tipi=data.get('kaynak_tipi'),
+                stage=data.get('stage'),
+                stage_operasyon=data.get('stage_operasyon'),
+                no_su=data.get('no_su'),
+                kimden_alindigi=data.get('kimden_alindigi'),
+                aciklama=data.get('aciklama'),
+                tutar=tutar,
+            )
+            print(f"Successfully saved expense with ID: {expense_id}")  # Debug log
+            return jsonify({
+                'success': True,
+                'message': 'Masraf başarıyla kaydedildi.',
+                'data': {
+                    'expense_id': expense_id,
+                    'expense': {
+                        'tarih': data['tarih'],
+                        'bolge_kodu': data['bolge_kodu'],
+                        'kaynak_tipi': data['kaynak_tipi'],
+                        'stage': data['stage'],
+                        'stage_operasyon': data['stage_operasyon'],
+                        'no_su': data['no_su'],
+                        'kimden_alindigi': data['kimden_alindigi'],
+                        'aciklama': data['aciklama'],
+                        'tutar': tutar
+                    }
                 }
-            }
-        }), 201
+            }), 201
     except Exception as e:
-        sess.rollback()
         print(f"Error saving expense: {str(e)}")  # Debug log
         return jsonify({"success": False, "message": str(e)}), 500
 
@@ -525,13 +497,11 @@ def get_expenses():
 
 @app.route('/api/clear_expenses/<user_id>', methods=['DELETE'])
 def clear_expenses(user_id):
-    sess = get_flask_session()
     try:
-        ExpenseRepository(sess).clear_for_user(int(user_id))
-        sess.commit()
-        return jsonify({"success": True, "message": "Masraflar başarıyla temizlendi"}), 200
+        with flask_transaction() as sess:
+            ExpenseRepository(sess).clear_for_user(int(user_id))
+            return jsonify({"success": True, "message": "Masraflar başarıyla temizlendi"}), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/update_expense/<int:expense_id>', methods=['PUT'])
@@ -539,34 +509,30 @@ def update_expense(expense_id):
     """Masraf güncelleme"""
     data = request.json or {}
 
-    sess = get_flask_session()
     try:
-        er = ExpenseRepository(sess)
-        if er.get_by_id(expense_id) is None:
-            return jsonify({"success": False, "message": "Masraf bulunamadı"}), 404
-        if not any(k in data for k in (
-            'tarih', 'bolge_kodu', 'kaynak_tipi', 'stage', 'stage_operasyon',
-            'no_su', 'kimden_alindigi', 'aciklama', 'tutar'
-        )):
-            return jsonify({"success": False, "message": "Güncellenecek alan bulunamadı"}), 400
-        er.update_whitelisted(expense_id, data)
-        sess.commit()
-        return jsonify({"success": True, "message": "Masraf başarıyla güncellendi"})
+        with flask_transaction() as sess:
+            er = ExpenseRepository(sess)
+            if er.get_by_id(expense_id) is None:
+                return jsonify({"success": False, "message": "Masraf bulunamadı"}), 404
+            if not any(k in data for k in (
+                'tarih', 'bolge_kodu', 'kaynak_tipi', 'stage', 'stage_operasyon',
+                'no_su', 'kimden_alindigi', 'aciklama', 'tutar'
+            )):
+                return jsonify({"success": False, "message": "Güncellenecek alan bulunamadı"}), 400
+            er.update_whitelisted(expense_id, data)
+            return jsonify({"success": True, "message": "Masraf başarıyla güncellendi"})
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/delete_expense/<int:expense_id>', methods=['DELETE'])
 def delete_expense(expense_id):
-    sess = get_flask_session()
     try:
-        ok = ExpenseRepository(sess).delete_by_id(expense_id)
-        if not ok:
-            return jsonify({"success": False, "message": "Masraf bulunamadı"}), 404
-        sess.commit()
-        return jsonify({"success": True, "message": "Masraf başarıyla silindi"})
+        with flask_transaction() as sess:
+            ok = ExpenseRepository(sess).delete_by_id(expense_id)
+            if not ok:
+                return jsonify({"success": False, "message": "Masraf bulunamadı"}), 404
+            return jsonify({"success": True, "message": "Masraf başarıyla silindi"})
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/get_user_id', methods=['POST'])
@@ -611,16 +577,14 @@ def add_bolge():
     ad = data.get('ad')
     if not kod or not ad:
         return jsonify({"success": False, "error": "Kod ve ad alanları gerekli"}), 400
-    sess = get_flask_session()
     try:
-        cat = CatalogRepository(sess)
-        if cat.bolge_exists(kod):
-            return jsonify({"success": False, "error": "Bu kod zaten mevcut"}), 400
-        cat.add_bolge(kod, ad)
-        sess.commit()
-        return jsonify({"success": True, "message": "Bölge kodu başarıyla eklendi"})
+        with flask_transaction() as sess:
+            cat = CatalogRepository(sess)
+            if cat.bolge_exists(kod):
+                return jsonify({"success": False, "error": "Bu kod zaten mevcut"}), 400
+            cat.add_bolge(kod, ad)
+            return jsonify({"success": True, "message": "Bölge kodu başarıyla eklendi"})
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/bulk_add_bolge', methods=['POST'])
@@ -631,36 +595,34 @@ def bulk_add_bolge():
     if not bolge_listesi:
         return jsonify({"success": False, "error": "Bölge listesi boş"}), 400
 
-    sess = get_flask_session()
     try:
-        cat = CatalogRepository(sess)
-        added_count = 0
-        skipped_count = 0
-        errors = []
-        for bolge in bolge_listesi:
-            try:
-                kod = bolge.get('kod')
-                ad = bolge.get('ad')
-                if not kod or not ad:
-                    errors.append(f"Kod veya ad eksik: {bolge}")
-                    continue
-                if cat.bolge_exists(kod):
-                    skipped_count += 1
-                    continue
-                cat.add_bolge(kod, ad)
-                added_count += 1
-            except Exception as e:
-                errors.append(f"Bölge eklenirken hata ({bolge}): {str(e)}")
-        sess.commit()
-        return jsonify({
-            "success": True,
-            "message": f"{added_count} bölge eklendi, {skipped_count} atlandı",
-            "added_count": added_count,
-            "skipped_count": skipped_count,
-            "errors": errors
-        })
+        with flask_transaction() as sess:
+            cat = CatalogRepository(sess)
+            added_count = 0
+            skipped_count = 0
+            errors = []
+            for bolge in bolge_listesi:
+                try:
+                    kod = bolge.get('kod')
+                    ad = bolge.get('ad')
+                    if not kod or not ad:
+                        errors.append(f"Kod veya ad eksik: {bolge}")
+                        continue
+                    if cat.bolge_exists(kod):
+                        skipped_count += 1
+                        continue
+                    cat.add_bolge(kod, ad)
+                    added_count += 1
+                except Exception as e:
+                    errors.append(f"Bölge eklenirken hata ({bolge}): {str(e)}")
+            return jsonify({
+                "success": True,
+                "message": f"{added_count} bölge eklendi, {skipped_count} atlandı",
+                "added_count": added_count,
+                "skipped_count": skipped_count,
+                "errors": errors
+            })
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
 
 # ==================== HARCAMA TALEP ENDPOINT'LERİ ====================
@@ -671,21 +633,19 @@ def save_harcama_talep():
     data = request.json or {}
     print(f"DEBUG - save_harcama_talep çağrıldı, data: {data}")
 
-    sess = get_flask_session()
     try:
-        hr = HarcamaRepository(sess)
-        print(f"DEBUG - Yeni no değeri: {hr.next_no()}")
-        harcama_talep_id = hr.save_from_payload(data)
-        sess.commit()
-        print(f"DEBUG - Commit başarılı, harcama_talep_id: {harcama_talep_id}")
-        print(f"DEBUG - Harcama talep kaydedildi, ID: {harcama_talep_id}")
-        return jsonify({
-            'success': True,
-            'message': 'Harcama talep başarıyla kaydedildi.',
-            'harcama_talep_id': harcama_talep_id
-        }), 201
+        with flask_transaction() as sess:
+            hr = HarcamaRepository(sess)
+            print(f"DEBUG - Yeni no değeri: {hr.next_no()}")
+            harcama_talep_id = hr.save_from_payload(data)
+            print(f"DEBUG - Commit başarılı, harcama_talep_id: {harcama_talep_id}")
+            print(f"DEBUG - Harcama talep kaydedildi, ID: {harcama_talep_id}")
+            return jsonify({
+                'success': True,
+                'message': 'Harcama talep başarıyla kaydedildi.',
+                'harcama_talep_id': harcama_talep_id
+            }), 201
     except Exception as e:
-        sess.rollback()
         print(f"ERROR - save_harcama_talep hatası: {str(e)}")
         import traceback
         traceback.print_exc()
@@ -720,64 +680,56 @@ def update_harcama_talep(harcama_talep_id):
     if not user_id:
         return jsonify({"success": False, "message": "user_id gerekli"}), 400
 
-    sess = get_flask_session()
     try:
-        hr = HarcamaRepository(sess)
-        if hr.get_by_id(harcama_talep_id) is None:
-            return jsonify({"success": False, "message": "Kayıt bulunamadı"}), 404
-        hr.update_with_audit(harcama_talep_id, int(user_id), data)
-        sess.commit()
-        return jsonify({
-            'success': True,
-            'message': 'Harcama talep başarıyla güncellendi.'
-        }), 200
+        with flask_transaction() as sess:
+            hr = HarcamaRepository(sess)
+            if hr.get_by_id(harcama_talep_id) is None:
+                return jsonify({"success": False, "message": "Kayıt bulunamadı"}), 404
+            hr.update_with_audit(harcama_talep_id, int(user_id), data)
+            return jsonify({
+                'success': True,
+                'message': 'Harcama talep başarıyla güncellendi.'
+            }), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/harcama_talep/<int:harcama_talep_id>', methods=['DELETE'])
 def delete_harcama_talep(harcama_talep_id):
     """Harcama talep silme"""
-    sess = get_flask_session()
     try:
-        HarcamaRepository(sess).delete_by_id(harcama_talep_id)
-        sess.commit()
-        return jsonify({
-            'success': True,
-            'message': 'Harcama talep başarıyla silindi.'
-        }), 200
+        with flask_transaction() as sess:
+            HarcamaRepository(sess).delete_by_id(harcama_talep_id)
+            return jsonify({
+                'success': True,
+                'message': 'Harcama talep başarıyla silindi.'
+            }), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/clear_harcama_talep', methods=['DELETE'])
 def clear_harcama_talep():
     """Tüm harcama talep kayıtlarını silme (admin için)"""
-    sess = get_flask_session()
     try:
-        HarcamaRepository(sess).clear_all()
-        sess.commit()
-        return jsonify({
-            'success': True,
-            'message': 'Tüm harcama talep kayıtları başarıyla silindi.'
-        }), 200
+        with flask_transaction() as sess:
+            HarcamaRepository(sess).clear_all()
+            return jsonify({
+                'success': True,
+                'message': 'Tüm harcama talep kayıtları başarıyla silindi.'
+            }), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/clear_all_expenses', methods=['DELETE'])
 def clear_all_expenses():
     """Tüm masraf kayıtlarını silme (admin için)"""
-    sess = get_flask_session()
     try:
-        ExpenseRepository(sess).clear_all()
-        sess.commit()
-        return jsonify({
-            'success': True,
-            'message': 'Tüm masraf kayıtları başarıyla silindi.'
-        }), 200
+        with flask_transaction() as sess:
+            ExpenseRepository(sess).clear_all()
+            return jsonify({
+                'success': True,
+                'message': 'Tüm masraf kayıtları başarıyla silindi.'
+            }), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 # ==================== KULLANICI YÖNETİM ENDPOINT'LERİ ====================
@@ -791,18 +743,16 @@ def update_user_role(username):
     if not role or role not in ['normal', 'admin', 'ust_duzey_yonetici']:
         return jsonify({"success": False, "message": "Geçersiz rol. Rol: 'normal', 'admin' veya 'ust_duzey_yonetici' olmalı"}), 400
 
-    sess = get_flask_session()
     try:
-        users = UserRepository(sess)
-        if not users.update_role(username, role):
-            return jsonify({"success": False, "message": "Kullanıcı bulunamadı"}), 404
-        sess.commit()
-        return jsonify({
-            'success': True,
-            'message': f"Kullanıcı '{username}' rolü '{role}' olarak güncellendi."
-        }), 200
+        with flask_transaction() as sess:
+            users = UserRepository(sess)
+            if not users.update_role(username, role):
+                return jsonify({"success": False, "message": "Kullanıcı bulunamadı"}), 404
+            return jsonify({
+                'success': True,
+                'message': f"Kullanıcı '{username}' rolü '{role}' olarak güncellendi."
+            }), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 def get_related_bolge_kodlari(ana_bolge_kodu):
@@ -827,73 +777,68 @@ def add_user_bolge(username):
     if not bolge_kodu:
         return jsonify({"success": False, "message": "Bölge kodu gerekli"}), 400
 
-    sess = get_flask_session()
     try:
-        users = UserRepository(sess)
-        cat = CatalogRepository(sess)
-        u = users.get_by_username(username)
-        if not u:
-            return jsonify({"success": False, "message": "Kullanıcı bulunamadı"}), 404
-        user_id = u.id
+        with flask_transaction() as sess:
+            users = UserRepository(sess)
+            cat = CatalogRepository(sess)
+            u = users.get_by_username(username)
+            if not u:
+                return jsonify({"success": False, "message": "Kullanıcı bulunamadı"}), 404
+            user_id = u.id
 
-        ana_bolge_kodlari = ['10', '11', '20', '30']
+            ana_bolge_kodlari = ['10', '11', '20', '30']
 
-        if bolge_kodu in ana_bolge_kodlari:
-            ilgili_bolgeler = get_related_bolge_kodlari(bolge_kodu)
-            eklenen_bolgeler = []
-            zaten_var_olanlar = []
-            for bolge in ilgili_bolgeler:
-                if not cat.bolge_exists(bolge):
-                    continue
-                ins, dup = users.add_user_bolge(user_id, bolge)
-                if ins:
-                    eklenen_bolgeler.append(bolge)
-                elif dup:
-                    zaten_var_olanlar.append(bolge)
-            sess.commit()
-            mesaj = f"Ana bölge '{bolge_kodu}' ve ilgili {len(eklenen_bolgeler)} alt bölge kullanıcı '{username}' için eklendi."
-            if zaten_var_olanlar:
-                mesaj += f" ({len(zaten_var_olanlar)} bölge zaten mevcuttu)"
+            if bolge_kodu in ana_bolge_kodlari:
+                ilgili_bolgeler = get_related_bolge_kodlari(bolge_kodu)
+                eklenen_bolgeler = []
+                zaten_var_olanlar = []
+                for bolge in ilgili_bolgeler:
+                    if not cat.bolge_exists(bolge):
+                        continue
+                    ins, dup = users.add_user_bolge(user_id, bolge)
+                    if ins:
+                        eklenen_bolgeler.append(bolge)
+                    elif dup:
+                        zaten_var_olanlar.append(bolge)
+                mesaj = f"Ana bölge '{bolge_kodu}' ve ilgili {len(eklenen_bolgeler)} alt bölge kullanıcı '{username}' için eklendi."
+                if zaten_var_olanlar:
+                    mesaj += f" ({len(zaten_var_olanlar)} bölge zaten mevcuttu)"
+                return jsonify({
+                    'success': True,
+                    'message': mesaj,
+                    'eklenen_bolgeler': eklenen_bolgeler,
+                    'zaten_var_olanlar': zaten_var_olanlar
+                }), 200
+
+            if not cat.bolge_exists(bolge_kodu):
+                return jsonify({"success": False, "message": "Geçersiz bölge kodu"}), 400
+            ins, dup = users.add_user_bolge(user_id, bolge_kodu)
+            if not ins and dup:
+                return jsonify({"success": False, "message": "Bu bölge kodu zaten eklenmiş"}), 409
             return jsonify({
                 'success': True,
-                'message': mesaj,
-                'eklenen_bolgeler': eklenen_bolgeler,
-                'zaten_var_olanlar': zaten_var_olanlar
+                'message': f"Bölge kodu '{bolge_kodu}' kullanıcı '{username}' için eklendi."
             }), 200
-
-        if not cat.bolge_exists(bolge_kodu):
-            return jsonify({"success": False, "message": "Geçersiz bölge kodu"}), 400
-        ins, dup = users.add_user_bolge(user_id, bolge_kodu)
-        if not ins and dup:
-            return jsonify({"success": False, "message": "Bu bölge kodu zaten eklenmiş"}), 409
-        sess.commit()
-        return jsonify({
-            'success': True,
-            'message': f"Bölge kodu '{bolge_kodu}' kullanıcı '{username}' için eklendi."
-        }), 200
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/users/<username>/bolge/<bolge_kodu>', methods=['DELETE'])
 def remove_user_bolge(username, bolge_kodu):
     """Kullanıcıdan bölge kodu kaldır"""
-    sess = get_flask_session()
     try:
-        users = UserRepository(sess)
-        u = users.get_by_username(username)
-        if not u:
-            return jsonify({"success": False, "message": "Kullanıcı bulunamadı"}), 404
-        n = users.remove_user_bolge(u.id, bolge_kodu)
-        sess.commit()
-        if n > 0:
-            return jsonify({
-                'success': True,
-                'message': f"Bölge kodu '{bolge_kodu}' kullanıcı '{username}' için kaldırıldı."
-            }), 200
-        return jsonify({"success": False, "message": "Bölge kodu bulunamadı"}), 404
+        with flask_transaction() as sess:
+            users = UserRepository(sess)
+            u = users.get_by_username(username)
+            if not u:
+                return jsonify({"success": False, "message": "Kullanıcı bulunamadı"}), 404
+            n = users.remove_user_bolge(u.id, bolge_kodu)
+            if n > 0:
+                return jsonify({
+                    'success': True,
+                    'message': f"Bölge kodu '{bolge_kodu}' kullanıcı '{username}' için kaldırıldı."
+                }), 200
+            return jsonify({"success": False, "message": "Bölge kodu bulunamadı"}), 404
     except Exception as e:
-        sess.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/users/<username>', methods=['GET'])
@@ -933,40 +878,36 @@ if __name__ == '__main__':
     print("✅ Migration kontrolü tamamlandı!")
 
     print("🔄 Admin kullanıcısı kontrol ediliyor...")
-    admin_sess = SessionFactory()
     try:
-        admin_username = get_admin_username()
-        ur = UserRepository(admin_sess)
-        if not ur.get_by_username(admin_username):
-            pwd = get_admin_initial_password()
-            generated = False
-            if not pwd:
-                if is_production():
-                    print(
-                        "UYARI: ADMIN_INITIAL_PASSWORD tanimlanmadi; ilk admin kullanicisi olusturulmadi."
-                    )
-                else:
-                    import secrets
+        with session_scope() as admin_sess:
+            admin_username = get_admin_username()
+            ur = UserRepository(admin_sess)
+            if not ur.get_by_username(admin_username):
+                pwd = get_admin_initial_password()
+                generated = False
+                if not pwd:
+                    if is_production():
+                        print(
+                            "UYARI: ADMIN_INITIAL_PASSWORD tanimlanmadi; ilk admin kullanicisi olusturulmadi."
+                        )
+                    else:
+                        import secrets
 
-                    pwd = secrets.token_urlsafe(12)
-                    generated = True
-                    print(
-                        f"GELISTIRME: Ilk admin '{admin_username}' sifresi (kaydedin): {pwd}"
-                    )
-            if pwd:
-                ur.create(admin_username, generate_password_hash(pwd), 'admin')
-                admin_sess.commit()
-                if not generated:
-                    print(f"✅ Admin kullanıcısı oluşturuldu: {admin_username}")
-        else:
-            print("✅ Admin kullanıcısı zaten mevcut")
+                        pwd = secrets.token_urlsafe(12)
+                        generated = True
+                        print(
+                            f"GELISTIRME: Ilk admin '{admin_username}' sifresi (kaydedin): {pwd}"
+                        )
+                if pwd:
+                    ur.create(admin_username, generate_password_hash(pwd), 'admin')
+                    if not generated:
+                        print(f"✅ Admin kullanıcısı oluşturuldu: {admin_username}")
+            else:
+                print("✅ Admin kullanıcısı zaten mevcut")
     except Exception as e:
-        admin_sess.rollback()
         print(f"❌ Admin kullanıcısı oluşturulurken hata: {e}")
         import traceback
         traceback.print_exc()
-    finally:
-        admin_sess.close()
 
     print("🚀 Flask sunucusu başlatılıyor...")
     print(f"📁 SQLite veritabanı: {DATABASE_PATH}")
